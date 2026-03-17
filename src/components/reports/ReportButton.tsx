@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { pdf } from '@react-pdf/renderer'
 import type { Patient, ToothChartEntry, Treatment } from '@shared/types'
 import { PatientReport } from '@/components/reports/PatientReport'
+import { useTranslation } from '@/lib/i18n'
 
 export interface ReportButtonProps {
   patient: Patient
@@ -15,6 +16,7 @@ type GenerationState =
   | { kind: 'error'; message: string }
 
 export function ReportButton({ patient, chartEntries, treatments }: ReportButtonProps): JSX.Element {
+  const t = useTranslation()
   const [state, setState] = useState<GenerationState>({ kind: 'idle' })
 
   async function handleExport(): Promise<void> {
@@ -59,7 +61,7 @@ export function ReportButton({ patient, chartEntries, treatments }: ReportButton
         type="button"
         onClick={() => void handleExport()}
         disabled={isGenerating}
-        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-700 bg-white border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-700 dark:text-blue-400 bg-white dark:bg-gray-700 border border-blue-300 dark:border-blue-700 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
         aria-label={`Export PDF report for ${patient.fullName}`}
       >
         {isGenerating ? (
@@ -84,7 +86,7 @@ export function ReportButton({ patient, chartEntries, treatments }: ReportButton
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
               />
             </svg>
-            Generating...
+            {t.generating}
           </>
         ) : (
           <>
@@ -95,7 +97,7 @@ export function ReportButton({ patient, chartEntries, treatments }: ReportButton
                 clipRule="evenodd"
               />
             </svg>
-            Export PDF
+            {t.exportPdf}
           </>
         )}
       </button>

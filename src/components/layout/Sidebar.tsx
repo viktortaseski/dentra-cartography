@@ -1,6 +1,7 @@
 import { useState, type ChangeEvent } from 'react'
 import type { Patient } from '@shared/types'
 import { PatientCard } from '@/components/patients/PatientCard'
+import { useTranslation } from '@/lib/i18n'
 
 interface SidebarProps {
   patients: Patient[]
@@ -21,6 +22,7 @@ export function Sidebar({
   onOpenSettings,
   onOpenCalendar,
 }: SidebarProps): JSX.Element {
+  const t = useTranslation()
   const [query, setQuery] = useState('')
 
   function handleQueryChange(e: ChangeEvent<HTMLInputElement>): void {
@@ -35,15 +37,15 @@ export function Sidebar({
 
   return (
     <aside
-      className="flex flex-col w-[280px] min-w-[280px] h-full bg-white border-r border-gray-200"
+      className="flex flex-col w-[280px] min-w-[280px] h-full bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700"
       aria-label="Patient list"
     >
       {/* Sidebar header */}
-      <div className="px-4 pt-4 pb-3 border-b border-gray-100">
-        <h1 className="text-sm font-semibold text-gray-900 mb-3">Patients</h1>
+      <div className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-700">
+        <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Patients</h1>
         <div className="relative">
           <svg
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500 pointer-events-none"
             viewBox="0 0 20 20"
             fill="currentColor"
             aria-hidden="true"
@@ -58,9 +60,9 @@ export function Sidebar({
             type="search"
             value={query}
             onChange={handleQueryChange}
-            placeholder="Search patients…"
-            className="w-full pl-8 pr-3 py-1.5 text-sm text-gray-900 placeholder-gray-400 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            aria-label="Search patients"
+            placeholder={t.searchPatients}
+            className="w-full pl-8 pr-3 py-1.5 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            aria-label={t.searchPatients}
           />
         </div>
       </div>
@@ -68,10 +70,10 @@ export function Sidebar({
       {/* Scrollable patient list */}
       <div className="flex-1 overflow-y-auto px-2 py-2 space-y-1" role="list">
         {isLoading ? (
-          <p className="text-xs text-gray-400 text-center mt-8">Loading…</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-8">{t.loading}</p>
         ) : filtered.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center mt-8">
-            {query.trim() ? 'No patients match your search.' : 'No patients yet.'}
+          <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-8">
+            {query.trim() ? 'No patients match your search.' : t.noPatients}
           </p>
         ) : (
           filtered.map((patient) => (
@@ -87,7 +89,7 @@ export function Sidebar({
       </div>
 
       {/* Bottom actions */}
-      <div className="px-4 py-4 border-t border-gray-100 space-y-2">
+      <div className="px-4 py-4 border-t border-gray-100 dark:border-gray-700 space-y-2">
         {/* New patient button */}
         <button
           type="button"
@@ -98,14 +100,14 @@ export function Sidebar({
           <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
             <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" />
           </svg>
-          New Patient
+          {t.newPatient}
         </button>
 
         {/* Calendar link */}
         <button
           type="button"
           onClick={onOpenCalendar}
-          className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           aria-label="Open calendar"
         >
           <svg className="w-4 h-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -115,14 +117,14 @@ export function Sidebar({
               clipRule="evenodd"
             />
           </svg>
-          Calendar
+          {t.calendar}
         </button>
 
         {/* Settings link */}
         <button
           type="button"
           onClick={onOpenSettings}
-          className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           aria-label="Open settings"
         >
           <svg className="w-4 h-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -132,7 +134,7 @@ export function Sidebar({
               clipRule="evenodd"
             />
           </svg>
-          Settings
+          {t.settings}
         </button>
       </div>
     </aside>

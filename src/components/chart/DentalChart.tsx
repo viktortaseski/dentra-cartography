@@ -3,6 +3,7 @@ import { useChartStore } from '@/store/chartStore'
 import { PERMANENT_TEETH } from '@/lib/toothDefinitions'
 import { ToothSVG } from './ToothSVG'
 import { ConditionPicker } from './ConditionPicker'
+import { useTranslation } from '@/lib/i18n'
 import type { ToothChartEntry } from '@shared/types'
 
 export interface DentalChartProps {
@@ -58,7 +59,7 @@ function QuadrantLabels({ fdis }: { fdis: number[] }): JSX.Element {
         return (
           <div
             key={fdi}
-            className={`w-[60px] text-center text-xs text-gray-400 font-mono${isMidGap ? ' mr-4' : ''}`}
+            className={`w-[60px] text-center text-xs text-gray-400 dark:text-gray-500 font-mono${isMidGap ? ' mr-4' : ''}`}
           >
             {fdi}
           </div>
@@ -84,6 +85,7 @@ assertAllDefined(UPPER_ARCH_FDI, 'upper')
 assertAllDefined(LOWER_ARCH_FDI, 'lower')
 
 export function DentalChart({ patientId }: DentalChartProps): JSX.Element {
+  const t = useTranslation()
   const { chartEntries, isLoading, error, conditionPickerOpen, selectedToothFdi, loadChart } =
     useChartStore()
 
@@ -96,7 +98,7 @@ export function DentalChart({ patientId }: DentalChartProps): JSX.Element {
       {/* Error banner */}
       {error && (
         <p
-          className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2 w-full max-w-2xl"
+          className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-2 w-full max-w-2xl"
           role="alert"
         >
           {error}
@@ -105,8 +107,8 @@ export function DentalChart({ patientId }: DentalChartProps): JSX.Element {
 
       {/* Loading overlay */}
       {isLoading && (
-        <p className="text-sm text-gray-500" aria-live="polite">
-          Loading chart...
+        <p className="text-sm text-gray-500 dark:text-gray-400" aria-live="polite">
+          {t.loadingChart}
         </p>
       )}
 
@@ -116,8 +118,8 @@ export function DentalChart({ patientId }: DentalChartProps): JSX.Element {
         role="table"
       >
         {/* Upper arch label */}
-        <div className="text-center text-xs font-medium text-gray-400 uppercase tracking-widest mb-1">
-          Upper
+        <div className="text-center text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1">
+          {t.upper}
         </div>
 
         {/* Upper arch FDI numbers (above the teeth) */}
@@ -131,7 +133,7 @@ export function DentalChart({ patientId }: DentalChartProps): JSX.Element {
         />
 
         {/* Midline separator */}
-        <div className="my-3 border-t border-dashed border-gray-200 w-full" aria-hidden="true" />
+        <div className="my-3 border-t border-dashed border-gray-200 dark:border-gray-700 w-full" aria-hidden="true" />
 
         {/* Lower arch teeth */}
         <ArchRow
@@ -144,8 +146,8 @@ export function DentalChart({ patientId }: DentalChartProps): JSX.Element {
         <QuadrantLabels fdis={LOWER_ARCH_FDI} />
 
         {/* Lower arch label */}
-        <div className="text-center text-xs font-medium text-gray-400 uppercase tracking-widest mt-1">
-          Lower
+        <div className="text-center text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-widest mt-1">
+          {t.lower}
         </div>
       </div>
 

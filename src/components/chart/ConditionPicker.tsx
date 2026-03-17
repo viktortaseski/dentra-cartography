@@ -1,6 +1,7 @@
 import type { ToothCondition, ToothSurface } from '@shared/types'
 import { CONDITION_CONFIG } from '@/lib/conditionConfig'
 import { useChartStore } from '@/store/chartStore'
+import { useTranslation } from '@/lib/i18n'
 
 // All 12 conditions in a stable display order
 const ALL_CONDITIONS: ToothCondition[] = [
@@ -23,6 +24,7 @@ function surfaceDisplayName(surface: ToothSurface): string {
 }
 
 export function ConditionPicker(): JSX.Element {
+  const t = useTranslation()
   const {
     selectedToothFdi,
     selectedSurface,
@@ -70,19 +72,19 @@ export function ConditionPicker(): JSX.Element {
       onClick={handleBackdropClick}
       onKeyDown={handleKeyDown}
     >
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
         {/* Header */}
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
           <h2
             id="condition-picker-title"
-            className="text-sm font-semibold text-gray-900"
+            className="text-sm font-semibold text-gray-900 dark:text-gray-100"
           >
-            Tooth {toothFdi} &mdash; {surfaceDisplayName(surface)}
+            {t.tooth} {toothFdi} &mdash; {surfaceDisplayName(surface)}
           </h2>
           <button
             type="button"
             onClick={closeConditionPicker}
-            className="text-gray-400 hover:text-gray-600 transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             aria-label="Close condition picker"
           >
             <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -102,25 +104,25 @@ export function ConditionPicker(): JSX.Element {
                   key={condition}
                   type="button"
                   onClick={() => void handleSelectCondition(condition)}
-                  aria-label={`Set condition to ${config.label}`}
+                  aria-label={`Set condition to ${t.conditions[condition]}`}
                   aria-pressed={isActive}
                   title={config.description}
                   className={[
                     'flex flex-col items-center gap-1 rounded-lg p-2 text-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
                     isActive
-                      ? 'bg-blue-50 ring-2 ring-blue-500'
-                      : 'hover:bg-gray-50',
+                      ? 'bg-blue-50 dark:bg-blue-900/30 ring-2 ring-blue-500'
+                      : 'hover:bg-gray-50 dark:hover:bg-gray-700',
                   ].join(' ')}
                 >
-                  {/* Color swatch */}
+                  {/* Color swatch — medically meaningful, stays the same in dark mode */}
                   <span
                     className="w-7 h-7 rounded"
                     style={{ backgroundColor: config.svgFill }}
                     aria-hidden="true"
                   />
                   {/* Label */}
-                  <span className="text-xs text-gray-700 leading-tight">
-                    {config.label}
+                  <span className="text-xs text-gray-700 dark:text-gray-300 leading-tight">
+                    {t.conditions[condition]}
                   </span>
                 </button>
               )
@@ -129,13 +131,13 @@ export function ConditionPicker(): JSX.Element {
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 border-t border-gray-100 flex justify-end">
+        <div className="px-5 py-3 border-t border-gray-100 dark:border-gray-700 flex justify-end">
           <button
             type="button"
             onClick={closeConditionPicker}
-            className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
-            Cancel
+            {t.cancel}
           </button>
         </div>
       </div>

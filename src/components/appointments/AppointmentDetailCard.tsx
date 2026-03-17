@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Appointment, AppointmentStatus, Patient } from '@shared/types'
+import { useTranslation } from '@/lib/i18n'
 
 interface AppointmentDetailCardProps {
   appointment: Appointment
@@ -16,26 +17,15 @@ const STATUS_BADGE: Record<AppointmentStatus, string> = {
   no_show: 'bg-red-100 text-red-800',
 }
 
-const STATUS_LABEL: Record<AppointmentStatus, string> = {
-  scheduled: 'Scheduled',
-  completed: 'Completed',
-  cancelled: 'Cancelled',
-  no_show: 'No Show',
-}
-
-const WEEKDAY_NAMES = [
-  'Sunday', 'Monday', 'Tuesday', 'Wednesday',
-  'Thursday', 'Friday', 'Saturday',
-]
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-]
-
-function formatLongDate(iso: string): string {
+function formatLongDate(iso: string, days: string[], months: string[]): string {
   const [year, month, day] = iso.split('-').map(Number)
   const date = new Date(year, month - 1, day)
-  return `${WEEKDAY_NAMES[date.getDay()]}, ${MONTH_NAMES[month - 1]} ${day}, ${year}`
+  // Use full day name by mapping short days to full names
+  const FULL_WEEKDAY_NAMES = [
+    'Sunday', 'Monday', 'Tuesday', 'Wednesday',
+    'Thursday', 'Friday', 'Saturday',
+  ]
+  return `${FULL_WEEKDAY_NAMES[date.getDay()]}, ${months[month - 1]} ${day}, ${year}`
 }
 
 export function AppointmentDetailCard({
@@ -45,7 +35,15 @@ export function AppointmentDetailCard({
   onReschedule,
   onDelete,
 }: AppointmentDetailCardProps): JSX.Element {
+  const t = useTranslation()
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+
+  const STATUS_LABEL: Record<AppointmentStatus, string> = {
+    scheduled: t.appointmentStatusScheduled,
+    completed: t.appointmentStatusCompleted,
+    cancelled: t.appointmentStatusCancelled,
+    no_show: t.appointmentStatusNoShow,
+  }
 
   function handleDeleteConfirm(): void {
     onDelete(appointment.id)
@@ -65,16 +63,16 @@ export function AppointmentDetailCard({
       aria-modal="true"
       aria-labelledby="appt-detail-title"
     >
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 id="appt-detail-title" className="text-base font-semibold text-gray-900">
+        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+          <h2 id="appt-detail-title" className="text-base font-semibold text-gray-900 dark:text-gray-100">
             {appointment.title}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             aria-label="Close"
           >
             <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -84,19 +82,21 @@ export function AppointmentDetailCard({
         </div>
 
         {/* Appointment info */}
-        <div className="px-6 py-4 space-y-2 border-b border-gray-100">
+        <div className="px-6 py-4 space-y-2 border-b border-gray-100 dark:border-gray-700">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-gray-500 w-14 shrink-0">Date</span>
-            <span className="text-sm text-gray-900">{formatLongDate(appointment.date)}</span>
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-14 shrink-0">{t.date}</span>
+            <span className="text-sm text-gray-900 dark:text-gray-100">
+              {formatLongDate(appointment.date, t.days, t.months)}
+            </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-gray-500 w-14 shrink-0">Time</span>
-            <span className="text-sm text-gray-900">
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-14 shrink-0">{t.startTime}</span>
+            <span className="text-sm text-gray-900 dark:text-gray-100">
               {appointment.startTime} – {appointment.endTime}
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-gray-500 w-14 shrink-0">Status</span>
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-14 shrink-0">{t.status}</span>
             <span
               className={[
                 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
@@ -109,38 +109,38 @@ export function AppointmentDetailCard({
         </div>
 
         {/* Patient info */}
-        <div className="px-6 py-4 border-b border-gray-100">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-            Patient
+        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+          <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">
+            {t.patient}
           </p>
           {patient ? (
             <div className="space-y-1">
-              <p className="text-sm font-medium text-gray-900">{patient.fullName}</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{patient.fullName}</p>
               {patient.phone && (
-                <p className="text-xs text-gray-600">
-                  <span className="text-gray-400 mr-1">Phone:</span>
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  <span className="text-gray-400 dark:text-gray-500 mr-1">{t.phone}:</span>
                   {patient.phone}
                 </p>
               )}
               {patient.email && (
-                <p className="text-xs text-gray-600">
-                  <span className="text-gray-400 mr-1">Email:</span>
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  <span className="text-gray-400 dark:text-gray-500 mr-1">{t.email}:</span>
                   {patient.email}
                 </p>
               )}
             </div>
           ) : (
-            <p className="text-sm text-gray-400">Patient not found</p>
+            <p className="text-sm text-gray-400 dark:text-gray-500">Patient not found</p>
           )}
         </div>
 
         {/* Notes */}
         {appointment.notes && (
-          <div className="px-6 py-4 border-b border-gray-100">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
-              Notes
+          <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+            <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">
+              {t.notes}
             </p>
-            <p className="text-sm text-gray-700 whitespace-pre-wrap">{appointment.notes}</p>
+            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{appointment.notes}</p>
           </div>
         )}
 
@@ -151,14 +151,14 @@ export function AppointmentDetailCard({
             type="button"
             onClick={handleEmailPatient}
             disabled={!patient?.email}
-            title={!patient?.email ? 'No email on file' : undefined}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            title={!patient?.email ? t.noEmailOnFile : undefined}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
               <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
             </svg>
-            Email Patient
+            {t.emailPatient}
           </button>
 
           <div className="flex items-center gap-2">
@@ -166,12 +166,12 @@ export function AppointmentDetailCard({
             <button
               type="button"
               onClick={() => onReschedule(appointment)}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             >
               <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
               </svg>
-              Reschedule
+              {t.reschedule}
             </button>
 
             {/* Delete button / confirmation */}
@@ -179,7 +179,7 @@ export function AppointmentDetailCard({
               <button
                 type="button"
                 onClick={() => setConfirmingDelete(true)}
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-red-600 bg-white dark:bg-gray-700 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
               >
                 <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                   <path
@@ -188,24 +188,24 @@ export function AppointmentDetailCard({
                     clipRule="evenodd"
                   />
                 </svg>
-                Delete
+                {t.delete}
               </button>
             ) : (
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-gray-600">Are you sure?</span>
+                <span className="text-xs text-gray-600 dark:text-gray-400">{t.areYouSure}</span>
                 <button
                   type="button"
                   onClick={handleDeleteConfirm}
                   className="px-2.5 py-1.5 text-xs font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
                 >
-                  Confirm
+                  {t.confirm}
                 </button>
                 <button
                   type="button"
                   onClick={() => setConfirmingDelete(false)}
-                  className="px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  className="px-2.5 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                 >
-                  Cancel
+                  {t.cancel}
                 </button>
               </div>
             )}

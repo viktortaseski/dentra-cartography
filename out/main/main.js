@@ -787,10 +787,11 @@ function createWindow() {
   const win = new electron.BrowserWindow({
     width: 1280,
     height: 800,
-    minWidth: 960,
-    minHeight: 600,
+    minWidth: 800,
+    minHeight: 500,
     show: false,
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
+    ...process.platform === "darwin" ? { trafficLightPosition: { x: 16, y: 14 } } : {},
     webPreferences: {
       preload: path.join(__dirname, "../preload/index.js"),
       sandbox: false,

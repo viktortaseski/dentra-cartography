@@ -1,6 +1,8 @@
 import { useState, useEffect, type FormEvent, type ChangeEvent } from 'react'
 import type { ClinicSettings } from '@shared/types'
 import { getClinicSettings, updateClinicSettings } from '@/lib/ipc'
+import { useUIStore } from '@/store/uiStore'
+import { useTranslation } from '@/lib/i18n'
 
 type Tab = 'clinic' | 'appearance'
 
@@ -14,6 +16,9 @@ const EMPTY_SETTINGS: ClinicSettings = {
 }
 
 export function Settings(): JSX.Element {
+  const t = useTranslation()
+  const { theme, language, setTheme, setLanguage } = useUIStore()
+
   const [activeTab, setActiveTab] = useState<Tab>('clinic')
   const [fields, setFields] = useState<ClinicSettings>(EMPTY_SETTINGS)
   const [isLoading, setIsLoading] = useState(false)
@@ -56,7 +61,7 @@ export function Settings(): JSX.Element {
     try {
       const updated = await updateClinicSettings(fields)
       setFields(updated)
-      setSuccessMessage('Settings saved')
+      setSuccessMessage(t.settingsSaved)
       setTimeout(() => setSuccessMessage(null), 2000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save settings')
@@ -66,38 +71,36 @@ export function Settings(): JSX.Element {
   }
 
   const inputClass =
-    'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+    'w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+
+  const tabClass = (tab: Tab): string =>
+    [
+      'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+      activeTab === tab
+        ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
+        : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200',
+    ].join(' ')
 
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-y-auto">
       <div className="max-w-2xl w-full mx-auto px-6 py-8">
-        <h1 className="text-xl font-semibold text-gray-900 mb-6">Settings</h1>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-6">{t.settingsTitle}</h1>
 
         {/* Tabs */}
-        <div className="flex gap-1 border-b border-gray-200 mb-6">
+        <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700 mb-6">
           <button
             type="button"
             onClick={() => setActiveTab('clinic')}
-            className={[
-              'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
-              activeTab === 'clinic'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700',
-            ].join(' ')}
+            className={tabClass('clinic')}
           >
-            Clinic Details
+            {t.clinicDetails}
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('appearance')}
-            className={[
-              'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
-              activeTab === 'appearance'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700',
-            ].join(' ')}
+            className={tabClass('appearance')}
           >
-            Appearance
+            {t.appearance}
           </button>
         </div>
 
@@ -105,12 +108,12 @@ export function Settings(): JSX.Element {
         {activeTab === 'clinic' && (
           <>
             {isLoading ? (
-              <p className="text-sm text-gray-400">Loading…</p>
+              <p className="text-sm text-gray-400 dark:text-gray-500">{t.loading}</p>
             ) : (
               <form onSubmit={handleSubmit} noValidate className="space-y-5">
                 {error && (
                   <p
-                    className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"
+                    className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2"
                     role="alert"
                   >
                     {error}
@@ -118,7 +121,7 @@ export function Settings(): JSX.Element {
                 )}
                 {successMessage && (
                   <p
-                    className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2"
+                    className="text-sm text-green-700 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg px-3 py-2"
                     role="status"
                   >
                     {successMessage}
@@ -129,9 +132,9 @@ export function Settings(): JSX.Element {
                 <div>
                   <label
                     htmlFor="cs-clinicName"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                   >
-                    Clinic Name <span className="text-red-500">*</span>
+                    {t.clinicName} <span className="text-red-500">*</span>
                   </label>
                   <input
                     id="cs-clinicName"
@@ -149,9 +152,9 @@ export function Settings(): JSX.Element {
                 <div>
                   <label
                     htmlFor="cs-dentistName"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                   >
-                    Dentist Name
+                    {t.dentistName}
                   </label>
                   <input
                     id="cs-dentistName"
@@ -168,9 +171,9 @@ export function Settings(): JSX.Element {
                 <div>
                   <label
                     htmlFor="cs-clinicAddress"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                   >
-                    Address
+                    {t.address}
                   </label>
                   <textarea
                     id="cs-clinicAddress"
@@ -188,9 +191,9 @@ export function Settings(): JSX.Element {
                   <div>
                     <label
                       htmlFor="cs-clinicPhone"
-                      className="block text-sm font-medium text-gray-700 mb-1"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                     >
-                      Phone
+                      {t.phone}
                     </label>
                     <input
                       id="cs-clinicPhone"
@@ -205,9 +208,9 @@ export function Settings(): JSX.Element {
                   <div>
                     <label
                       htmlFor="cs-clinicEmail"
-                      className="block text-sm font-medium text-gray-700 mb-1"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                     >
-                      Email
+                      {t.email}
                     </label>
                     <input
                       id="cs-clinicEmail"
@@ -225,9 +228,9 @@ export function Settings(): JSX.Element {
                 <div>
                   <label
                     htmlFor="cs-clinicWebsite"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                   >
-                    Website
+                    {t.website}
                   </label>
                   <input
                     id="cs-clinicWebsite"
@@ -246,7 +249,7 @@ export function Settings(): JSX.Element {
                     disabled={isSaving}
                     className="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                   >
-                    {isSaving ? 'Saving…' : 'Save Settings'}
+                    {isSaving ? t.saving : t.saveSettings}
                   </button>
                 </div>
               </form>
@@ -256,7 +259,119 @@ export function Settings(): JSX.Element {
 
         {/* Appearance tab */}
         {activeTab === 'appearance' && (
-          <div className="text-sm text-gray-400">Coming soon</div>
+          <div className="space-y-8">
+            {/* Dark Mode */}
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                {t.darkMode}
+              </h2>
+              <div className="flex items-center gap-4">
+                {/* Light option */}
+                <button
+                  type="button"
+                  onClick={() => setTheme('light')}
+                  className={[
+                    'flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+                    theme === 'light'
+                      ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                      : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700',
+                  ].join(' ')}
+                  aria-pressed={theme === 'light'}
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path
+                      fillRule="evenodd"
+                      d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  Light
+                </button>
+
+                {/* Toggle switch */}
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={theme === 'dark'}
+                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                  className={[
+                    'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2',
+                    theme === 'dark' ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600',
+                  ].join(' ')}
+                  aria-label="Toggle dark mode"
+                >
+                  <span
+                    className={[
+                      'inline-block h-4 w-4 rounded-full bg-white transition-transform',
+                      theme === 'dark' ? 'translate-x-6' : 'translate-x-1',
+                    ].join(' ')}
+                  />
+                </button>
+
+                {/* Dark option */}
+                <button
+                  type="button"
+                  onClick={() => setTheme('dark')}
+                  className={[
+                    'flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+                    theme === 'dark'
+                      ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                      : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700',
+                  ].join(' ')}
+                  aria-pressed={theme === 'dark'}
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+                  </svg>
+                  Dark
+                </button>
+              </div>
+            </div>
+
+            {/* Language */}
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                {t.language}
+              </h2>
+              <div className="space-y-2">
+                {(
+                  [
+                    { code: 'en', label: t.languageEn },
+                    { code: 'mk', label: t.languageMk },
+                    { code: 'sq', label: t.languageSq },
+                  ] as const
+                ).map(({ code, label }) => (
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => setLanguage(code)}
+                    className={[
+                      'w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 text-left',
+                      language === code
+                        ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                        : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700',
+                    ].join(' ')}
+                    aria-pressed={language === code}
+                  >
+                    {/* Radio indicator */}
+                    <span
+                      className={[
+                        'w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0',
+                        language === code
+                          ? 'border-blue-600'
+                          : 'border-gray-300 dark:border-gray-600',
+                      ].join(' ')}
+                    >
+                      {language === code && (
+                        <span className="w-2 h-2 rounded-full bg-blue-600" />
+                      )}
+                    </span>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

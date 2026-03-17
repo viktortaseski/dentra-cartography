@@ -2,6 +2,7 @@ import type { Patient } from '@shared/types'
 import { useChartStore } from '@/store/chartStore'
 import { useTreatmentStore } from '@/store/treatmentStore'
 import { ReportButton } from '@/components/reports/ReportButton'
+import { useTranslation } from '@/lib/i18n'
 
 interface TopBarProps {
   patient: Patient | null
@@ -20,13 +21,14 @@ function formatDob(dateOfBirth: string): string {
 }
 
 export function TopBar({ patient, viewTitle }: TopBarProps): JSX.Element {
+  const t = useTranslation()
   const chartEntries = useChartStore((s) => s.chartEntries)
   const treatments = useTreatmentStore((s) => s.treatments)
   const isMac = navigator.userAgent.includes('Mac')
 
   return (
     <header
-      className="flex items-center justify-between h-14 px-6 bg-white border-b border-gray-200 flex-shrink-0"
+      className="flex items-center justify-between h-14 px-6 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0"
       style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
     >
       {/* Left: app name / breadcrumb — extra left padding on macOS to clear traffic lights */}
@@ -34,13 +36,13 @@ export function TopBar({ patient, viewTitle }: TopBarProps): JSX.Element {
         className={['flex items-center gap-3 min-w-0', isMac ? 'pl-20' : ''].join(' ').trim()}
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
-        <span className="text-sm font-semibold text-blue-700 tracking-tight select-none">
-          Dental Cartography
+        <span className="text-sm font-semibold text-blue-700 dark:text-blue-400 tracking-tight select-none">
+          {t.appName}
         </span>
         {viewTitle && (
           <>
             <svg
-              className="w-4 h-4 text-gray-300 flex-shrink-0"
+              className="w-4 h-4 text-gray-300 dark:text-gray-600 flex-shrink-0"
               viewBox="0 0 20 20"
               fill="currentColor"
               aria-hidden="true"
@@ -51,13 +53,13 @@ export function TopBar({ patient, viewTitle }: TopBarProps): JSX.Element {
                 clipRule="evenodd"
               />
             </svg>
-            <span className="text-sm font-semibold text-gray-900">{viewTitle}</span>
+            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{viewTitle}</span>
           </>
         )}
         {!viewTitle && patient && (
           <>
             <svg
-              className="w-4 h-4 text-gray-300 flex-shrink-0"
+              className="w-4 h-4 text-gray-300 dark:text-gray-600 flex-shrink-0"
               viewBox="0 0 20 20"
               fill="currentColor"
               aria-hidden="true"
@@ -69,10 +71,10 @@ export function TopBar({ patient, viewTitle }: TopBarProps): JSX.Element {
               />
             </svg>
             <div className="min-w-0">
-              <span className="text-sm font-semibold text-gray-900 truncate">
+              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
                 {patient.fullName}
               </span>
-              <span className="text-xs text-gray-400 ml-2">
+              <span className="text-xs text-gray-400 dark:text-gray-500 ml-2">
                 DOB: {formatDob(patient.dateOfBirth)}
               </span>
             </div>

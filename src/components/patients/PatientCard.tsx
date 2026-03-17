@@ -26,18 +26,18 @@ export function PatientCard({ patient, isSelected, onSelect }: PatientCardProps)
         'w-full text-left px-4 py-3 rounded-lg transition-colors duration-100',
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
         isSelected
-          ? 'bg-blue-50 border border-blue-200'
-          : 'bg-white border border-transparent hover:bg-gray-50 hover:border-gray-200',
+          ? 'bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700'
+          : 'bg-white dark:bg-gray-800 border border-transparent hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-200 dark:hover:border-gray-600',
       ].join(' ')}
       aria-selected={isSelected}
       aria-label={`Select patient ${patient.fullName}`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className={`text-sm font-semibold truncate ${isSelected ? 'text-blue-700' : 'text-gray-900'}`}>
+          <p className={`text-sm font-semibold truncate ${isSelected ? 'text-blue-700 dark:text-blue-200' : 'text-gray-900 dark:text-gray-100'}`}>
             {patient.fullName}
           </p>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
             DOB: {formatDob(patient.dateOfBirth)}
           </p>
         </div>

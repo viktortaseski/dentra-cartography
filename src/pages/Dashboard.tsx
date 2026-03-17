@@ -9,6 +9,7 @@ import { TreatmentPanel } from '@/components/treatments'
 import { ChartView } from '@/pages/ChartView'
 import { Settings } from '@/pages/Settings'
 import { CalendarView } from '@/pages/CalendarView'
+import { useTranslation } from '@/lib/i18n'
 import type { Patient } from '@/types'
 
 type ModalState =
@@ -19,6 +20,7 @@ type ModalState =
 type ActiveView = 'chart' | 'settings' | 'calendar'
 
 export function Dashboard(): JSX.Element {
+  const t = useTranslation()
   const { patients, selectedPatientId, isLoading, loadPatients, selectPatient, archivePatient } =
     usePatientStore()
   const selectedPatient = usePatientStore(selectSelectedPatient)
@@ -47,9 +49,7 @@ export function Dashboard(): JSX.Element {
 
   async function handleArchivePatient(): Promise<void> {
     if (selectedPatient) {
-      const confirmed = window.confirm(
-        `Archive ${selectedPatient.fullName}? They will be removed from the patient list.`
-      )
+      const confirmed = window.confirm(t.archiveConfirm(selectedPatient.fullName))
       if (confirmed) {
         await archivePatient(selectedPatient.id)
       }
@@ -71,16 +71,16 @@ export function Dashboard(): JSX.Element {
 
   const topBarViewTitle =
     activeView === 'settings'
-      ? 'Settings'
+      ? t.settingsTitle
       : activeView === 'calendar'
-      ? 'Calendar'
+      ? t.calendar
       : undefined
 
   // When in chart view with no patient, show no patient in TopBar title
   const topBarPatient = activeView === 'chart' ? selectedPatient : null
 
   return (
-    <div className="flex h-screen bg-gray-50 text-gray-900 overflow-hidden">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-hidden">
       {/* Left sidebar */}
       <Sidebar
         patients={patients}
@@ -125,7 +125,7 @@ export function Dashboard(): JSX.Element {
                 <div className="flex flex-1 items-center justify-center">
                   <div className="text-center">
                     <svg
-                      className="mx-auto w-12 h-12 text-gray-300 mb-3"
+                      className="mx-auto w-12 h-12 text-gray-300 dark:text-gray-600 mb-3"
                       viewBox="0 0 48 48"
                       fill="none"
                       aria-hidden="true"
@@ -147,11 +147,11 @@ export function Dashboard(): JSX.Element {
                         strokeLinecap="round"
                       />
                     </svg>
-                    <p className="text-base font-medium text-gray-500">
-                      Select a patient to view their chart
+                    <p className="text-base font-medium text-gray-500 dark:text-gray-400">
+                      {t.selectPatient}
                     </p>
-                    <p className="text-sm text-gray-400 mt-1">
-                      Choose a patient from the sidebar or create a new one.
+                    <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+                      {t.selectPatientSub}
                     </p>
                   </div>
                 </div>

@@ -7,6 +7,7 @@ import type {
 } from '@shared/types'
 import { usePatientStore } from '@/store/patientStore'
 import { useAppointmentStore } from '@/store/appointmentStore'
+import { useTranslation } from '@/lib/i18n'
 
 interface AppointmentFormProps {
   /** Pass an existing appointment to edit, or undefined to create */
@@ -47,6 +48,7 @@ export function AppointmentForm({
   initialDate,
   onClose,
 }: AppointmentFormProps): JSX.Element {
+  const t = useTranslation()
   const patients = usePatientStore((s) => s.patients)
   const { createAppointment, updateAppointment, error } = useAppointmentStore()
 
@@ -139,6 +141,9 @@ export function AppointmentForm({
 
   const displayedError = validationError ?? error
 
+  const inputClass =
+    'w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
@@ -146,16 +151,16 @@ export function AppointmentForm({
       aria-modal="true"
       aria-labelledby="appt-form-title"
     >
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg mx-4 overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 id="appt-form-title" className="text-base font-semibold text-gray-900">
-            {appointment ? 'Edit Appointment' : 'New Appointment'}
+        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+          <h2 id="appt-form-title" className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            {appointment ? t.reschedule : t.newAppointment}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             aria-label="Close form"
           >
             <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -169,7 +174,7 @@ export function AppointmentForm({
           <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
             {displayedError && (
               <p
-                className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"
+                className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2"
                 role="alert"
               >
                 {displayedError}
@@ -178,8 +183,8 @@ export function AppointmentForm({
 
             {/* Patient selector */}
             <div>
-              <label htmlFor="af-patient" className="block text-sm font-medium text-gray-700 mb-1">
-                Patient <span className="text-red-500">*</span>
+              <label htmlFor="af-patient" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {t.patient} <span className="text-red-500">*</span>
               </label>
               <select
                 id="af-patient"
@@ -187,9 +192,9 @@ export function AppointmentForm({
                 value={fields.patientId}
                 onChange={handleChange}
                 required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={inputClass}
               >
-                <option value="">Select patient…</option>
+                <option value="">{t.selectPatientLabel}…</option>
                 {patients.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.fullName}
@@ -200,8 +205,8 @@ export function AppointmentForm({
 
             {/* Title */}
             <div>
-              <label htmlFor="af-title" className="block text-sm font-medium text-gray-700 mb-1">
-                Title <span className="text-red-500">*</span>
+              <label htmlFor="af-title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {t.title} <span className="text-red-500">*</span>
               </label>
               <input
                 id="af-title"
@@ -210,15 +215,15 @@ export function AppointmentForm({
                 value={fields.title}
                 onChange={handleChange}
                 required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={inputClass}
                 placeholder="Check-up, Extraction, Root canal…"
               />
             </div>
 
             {/* Date */}
             <div>
-              <label htmlFor="af-date" className="block text-sm font-medium text-gray-700 mb-1">
-                Date <span className="text-red-500">*</span>
+              <label htmlFor="af-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {t.date} <span className="text-red-500">*</span>
               </label>
               <input
                 id="af-date"
@@ -227,7 +232,7 @@ export function AppointmentForm({
                 value={fields.date}
                 onChange={handleChange}
                 required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={inputClass}
               />
             </div>
 
@@ -236,9 +241,9 @@ export function AppointmentForm({
               <div>
                 <label
                   htmlFor="af-startTime"
-                  className="block text-sm font-medium text-gray-700 mb-1"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
-                  Start Time <span className="text-red-500">*</span>
+                  {t.startTime} <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="af-startTime"
@@ -247,15 +252,15 @@ export function AppointmentForm({
                   value={fields.startTime}
                   onChange={handleChange}
                   required
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={inputClass}
                 />
               </div>
               <div>
                 <label
                   htmlFor="af-endTime"
-                  className="block text-sm font-medium text-gray-700 mb-1"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
-                  End Time <span className="text-red-500">*</span>
+                  {t.endTime} <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="af-endTime"
@@ -264,34 +269,34 @@ export function AppointmentForm({
                   value={fields.endTime}
                   onChange={handleChange}
                   required
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={inputClass}
                 />
               </div>
             </div>
 
             {/* Status */}
             <div>
-              <label htmlFor="af-status" className="block text-sm font-medium text-gray-700 mb-1">
-                Status
+              <label htmlFor="af-status" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {t.status}
               </label>
               <select
                 id="af-status"
                 name="status"
                 value={fields.status}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={inputClass}
               >
-                <option value="scheduled">Scheduled</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-                <option value="no_show">No Show</option>
+                <option value="scheduled">{t.appointmentStatusScheduled}</option>
+                <option value="completed">{t.appointmentStatusCompleted}</option>
+                <option value="cancelled">{t.appointmentStatusCancelled}</option>
+                <option value="no_show">{t.appointmentStatusNoShow}</option>
               </select>
             </div>
 
             {/* Notes */}
             <div>
-              <label htmlFor="af-notes" className="block text-sm font-medium text-gray-700 mb-1">
-                Notes
+              <label htmlFor="af-notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {t.notes}
               </label>
               <textarea
                 id="af-notes"
@@ -299,27 +304,27 @@ export function AppointmentForm({
                 value={fields.notes}
                 onChange={handleChange}
                 rows={3}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                className={`${inputClass} resize-none`}
                 placeholder="Additional notes…"
               />
             </div>
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
+          <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             >
-              Cancel
+              {t.cancel}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             >
-              {isSubmitting ? 'Saving…' : appointment ? 'Save Changes' : 'Create Appointment'}
+              {isSubmitting ? t.saving : appointment ? t.save : t.newAppointment}
             </button>
           </div>
         </form>

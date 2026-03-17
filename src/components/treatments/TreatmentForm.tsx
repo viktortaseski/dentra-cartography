@@ -7,6 +7,7 @@ import type {
 } from '@shared/types'
 import { CONDITION_CONFIG } from '@/lib/conditionConfig'
 import { useTreatmentStore } from '@/store/treatmentStore'
+import { useTranslation } from '@/lib/i18n'
 
 interface TreatmentFormProps {
   patientId: number
@@ -57,6 +58,7 @@ export function TreatmentForm({
   onClose,
   onSaved,
 }: TreatmentFormProps): JSX.Element {
+  const t = useTranslation()
   const { addTreatment, isLoading, error } = useTreatmentStore()
 
   const [fields, setFields] = useState<FormFields>({
@@ -128,6 +130,9 @@ export function TreatmentForm({
 
   const displayedError = validationError ?? error
 
+  const inputClass =
+    'w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
@@ -135,16 +140,16 @@ export function TreatmentForm({
       aria-modal="true"
       aria-labelledby="treatment-form-title"
     >
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg mx-4 overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 id="treatment-form-title" className="text-base font-semibold text-gray-900">
-            Add Treatment
+        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+          <h2 id="treatment-form-title" className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            {t.addTreatment}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             aria-label="Close form"
           >
             <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -158,7 +163,7 @@ export function TreatmentForm({
           <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
             {displayedError && (
               <p
-                className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"
+                className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2"
                 role="alert"
               >
                 {displayedError}
@@ -170,9 +175,9 @@ export function TreatmentForm({
               <div>
                 <label
                   htmlFor="tf-toothFdi"
-                  className="block text-sm font-medium text-gray-700 mb-1"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
-                  Tooth (FDI) <span className="text-red-500">*</span>
+                  {t.tooth} (FDI) <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="tf-toothFdi"
@@ -183,7 +188,7 @@ export function TreatmentForm({
                   min={11}
                   max={85}
                   required
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={inputClass}
                   placeholder="e.g. 36"
                 />
               </div>
@@ -191,16 +196,16 @@ export function TreatmentForm({
               <div>
                 <label
                   htmlFor="tf-surface"
-                  className="block text-sm font-medium text-gray-700 mb-1"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
-                  Surface
+                  {t.surface}
                 </label>
                 <select
                   id="tf-surface"
                   name="surface"
                   value={fields.surface}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={inputClass}
                 >
                   <option value="">Whole tooth</option>
                   {SURFACES.map((s) => (
@@ -216,9 +221,9 @@ export function TreatmentForm({
             <div>
               <label
                 htmlFor="tf-conditionType"
-                className="block text-sm font-medium text-gray-700 mb-1"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
               >
-                Condition / Procedure <span className="text-red-500">*</span>
+                {t.procedure} <span className="text-red-500">*</span>
               </label>
               <select
                 id="tf-conditionType"
@@ -226,12 +231,12 @@ export function TreatmentForm({
                 value={fields.conditionType}
                 onChange={handleChange}
                 required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={inputClass}
               >
                 <option value="">Select condition…</option>
                 {ALL_CONDITIONS.map((c) => (
                   <option key={c} value={c}>
-                    {CONDITION_CONFIG[c].label}
+                    {t.conditions[c]}
                   </option>
                 ))}
               </select>
@@ -242,9 +247,9 @@ export function TreatmentForm({
               <div>
                 <label
                   htmlFor="tf-status"
-                  className="block text-sm font-medium text-gray-700 mb-1"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
-                  Status <span className="text-red-500">*</span>
+                  {t.status} <span className="text-red-500">*</span>
                 </label>
                 <select
                   id="tf-status"
@@ -252,20 +257,20 @@ export function TreatmentForm({
                   value={fields.status}
                   onChange={handleChange}
                   required
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={inputClass}
                 >
-                  <option value="completed">Completed</option>
-                  <option value="planned">Planned</option>
-                  <option value="referred">Referred</option>
+                  <option value="completed">{t.statusCompleted}</option>
+                  <option value="planned">{t.statusPlanned}</option>
+                  <option value="referred">{t.statusReferred}</option>
                 </select>
               </div>
 
               <div>
                 <label
                   htmlFor="tf-datePerformed"
-                  className="block text-sm font-medium text-gray-700 mb-1"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
-                  Date Performed <span className="text-red-500">*</span>
+                  {t.datePerformed} <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="tf-datePerformed"
@@ -274,7 +279,7 @@ export function TreatmentForm({
                   value={fields.datePerformed}
                   onChange={handleChange}
                   required
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={inputClass}
                 />
               </div>
             </div>
@@ -284,9 +289,9 @@ export function TreatmentForm({
               <div>
                 <label
                   htmlFor="tf-performedBy"
-                  className="block text-sm font-medium text-gray-700 mb-1"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
-                  Performed By
+                  {t.performedBy}
                 </label>
                 <input
                   id="tf-performedBy"
@@ -294,7 +299,7 @@ export function TreatmentForm({
                   type="text"
                   value={fields.performedBy}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={inputClass}
                   placeholder="Dr. Smith"
                 />
               </div>
@@ -302,10 +307,10 @@ export function TreatmentForm({
               <div>
                 <label
                   htmlFor="tf-price"
-                  className="block text-sm font-medium text-gray-700 mb-1"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
-                  Price{' '}
-                  <span className="text-gray-400 font-normal">(optional)</span>
+                  {t.price}{' '}
+                  <span className="text-gray-400 dark:text-gray-500 font-normal">(optional)</span>
                 </label>
                 <input
                   id="tf-price"
@@ -315,7 +320,7 @@ export function TreatmentForm({
                   min="0"
                   value={fields.price}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={inputClass}
                   placeholder="0.00"
                 />
               </div>
@@ -325,9 +330,9 @@ export function TreatmentForm({
             <div>
               <label
                 htmlFor="tf-notes"
-                className="block text-sm font-medium text-gray-700 mb-1"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
               >
-                Notes
+                {t.notes}
               </label>
               <textarea
                 id="tf-notes"
@@ -335,27 +340,27 @@ export function TreatmentForm({
                 value={fields.notes}
                 onChange={handleChange}
                 rows={3}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                className={`${inputClass} resize-none`}
                 placeholder="Additional observations or notes…"
               />
             </div>
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
+          <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             >
-              Cancel
+              {t.cancel}
             </button>
             <button
               type="submit"
               disabled={isLoading}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             >
-              {isLoading ? 'Saving…' : 'Add Treatment'}
+              {isLoading ? t.saving : t.addTreatment}
             </button>
           </div>
         </form>

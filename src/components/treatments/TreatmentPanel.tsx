@@ -3,6 +3,7 @@ import { useTreatmentStore } from '@/store/treatmentStore'
 import { useChartStore } from '@/store/chartStore'
 import { TreatmentRow } from './TreatmentRow'
 import { TreatmentForm } from './TreatmentForm'
+import { useTranslation } from '@/lib/i18n'
 import type { ToothSurface, ToothCondition } from '@shared/types'
 
 interface TreatmentPanelProps {
@@ -11,6 +12,7 @@ interface TreatmentPanelProps {
 }
 
 export function TreatmentPanel({ patientId, selectedToothFdi }: TreatmentPanelProps): JSX.Element {
+  const t = useTranslation()
   const { treatments, isLoading, error, loadTreatmentsForPatient } = useTreatmentStore()
   const { selectedSurface, getCondition } = useChartStore()
 
@@ -24,7 +26,7 @@ export function TreatmentPanel({ patientId, selectedToothFdi }: TreatmentPanelPr
   // Filter client-side when a tooth is selected
   const displayedTreatments = useMemo(() => {
     if (selectedToothFdi === null) return treatments
-    return treatments.filter((t) => t.toothFdi === selectedToothFdi)
+    return treatments.filter((tr) => tr.toothFdi === selectedToothFdi)
   }, [treatments, selectedToothFdi])
 
   // Pre-fill form from chart selection when available
@@ -42,20 +44,20 @@ export function TreatmentPanel({ patientId, selectedToothFdi }: TreatmentPanelPr
   }
 
   return (
-    <div className="border-t border-gray-200 bg-white flex flex-col flex-shrink-0 max-h-48 overflow-y-auto">
+    <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col flex-shrink-0 max-h-48 overflow-y-auto">
       {/* Panel header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700">
         <div className="flex items-center gap-3">
-          <h2 className="text-sm font-semibold text-gray-900">Treatment History</h2>
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t.treatmentHistory}</h2>
 
           {/* All Teeth / Tooth {fdi} filter indicator */}
           {selectedToothFdi !== null ? (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-              Tooth {selectedToothFdi}
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
+              {t.tooth} {selectedToothFdi}
             </span>
           ) : (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-              All Teeth
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+              {t.allTeeth}
             </span>
           )}
         </div>
@@ -69,26 +71,26 @@ export function TreatmentPanel({ patientId, selectedToothFdi }: TreatmentPanelPr
           <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
             <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
           </svg>
-          Add Treatment
+          {t.addTreatment}
         </button>
       </div>
 
       {/* Column headers */}
-      <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 border-b border-gray-100">
-        <span className="text-xs font-medium text-gray-400 uppercase tracking-wide w-24 shrink-0">
+      <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700">
+        <span className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide w-24 shrink-0">
           Date
         </span>
-        <span className="text-xs font-medium text-gray-400 uppercase tracking-wide w-10 shrink-0">
-          Tooth
+        <span className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide w-10 shrink-0">
+          {t.tooth}
         </span>
-        <span className="text-xs font-medium text-gray-400 uppercase tracking-wide w-16 shrink-0">
-          Surface
+        <span className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide w-16 shrink-0">
+          {t.surface}
         </span>
-        <span className="text-xs font-medium text-gray-400 uppercase tracking-wide shrink-0">
-          Condition
+        <span className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide shrink-0">
+          {t.procedure}
         </span>
-        <span className="text-xs font-medium text-gray-400 uppercase tracking-wide shrink-0 ml-1">
-          Status
+        <span className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide shrink-0 ml-1">
+          {t.status}
         </span>
       </div>
 
@@ -96,15 +98,15 @@ export function TreatmentPanel({ patientId, selectedToothFdi }: TreatmentPanelPr
       <div>
         {/* Loading */}
         {isLoading && (
-          <p className="text-sm text-gray-500 px-4 py-6 text-center" aria-live="polite">
-            Loading treatments…
+          <p className="text-sm text-gray-500 dark:text-gray-400 px-4 py-6 text-center" aria-live="polite">
+            {t.loading}
           </p>
         )}
 
         {/* Error */}
         {!isLoading && error && (
           <p
-            className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg mx-4 my-3 px-3 py-2"
+            className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg mx-4 my-3 px-3 py-2"
             role="alert"
           >
             {error}
@@ -115,7 +117,7 @@ export function TreatmentPanel({ patientId, selectedToothFdi }: TreatmentPanelPr
         {!isLoading && !error && displayedTreatments.length === 0 && (
           <div className="flex flex-col items-center justify-center py-10 text-center">
             <svg
-              className="w-8 h-8 text-gray-300 mb-2"
+              className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2"
               viewBox="0 0 24 24"
               fill="none"
               aria-hidden="true"
@@ -128,9 +130,9 @@ export function TreatmentPanel({ patientId, selectedToothFdi }: TreatmentPanelPr
                 strokeLinejoin="round"
               />
             </svg>
-            <p className="text-sm text-gray-500">No treatments recorded</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{t.noTreatments}</p>
             {selectedToothFdi !== null && (
-              <p className="text-xs text-gray-400 mt-1">for tooth {selectedToothFdi}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">for tooth {selectedToothFdi}</p>
             )}
           </div>
         )}

@@ -65,7 +65,7 @@ export function CalendarView(): JSX.Element {
     <div className="flex flex-1 min-h-0 overflow-hidden">
       {/* Left panel */}
       <aside
-        className="flex flex-col w-[240px] min-w-[240px] h-full bg-white border-r border-gray-200 overflow-y-auto"
+        className="flex flex-col w-[240px] min-w-[240px] h-full bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-y-auto"
         aria-label="Calendar sidebar"
       >
         <MiniCalendar
@@ -85,11 +85,11 @@ export function CalendarView(): JSX.Element {
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         {isLoading && (
           <div className="flex items-center justify-center flex-1">
-            <p className="text-sm text-gray-400">Loading appointments…</p>
+            <p className="text-sm text-gray-400 dark:text-gray-500">Loading appointments…</p>
           </div>
         )}
         {error && (
-          <div className="m-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="m-4 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
             <p className="text-sm text-red-600" role="alert">
               {error}
             </p>

@@ -1,5 +1,6 @@
 import type { Appointment } from '@shared/types'
 import { usePatientStore } from '@/store/patientStore'
+import { useTranslation } from '@/lib/i18n'
 import { AppointmentBlock } from './AppointmentBlock'
 
 interface WeekViewProps {
@@ -10,8 +11,6 @@ interface WeekViewProps {
   onAppointmentClick: (appointment: Appointment) => void
   onEmptyDayClick: (date: string) => void
 }
-
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 function getWeekDates(iso: string): Date[] {
   const [year, month, day] = iso.split('-').map(Number)
@@ -43,6 +42,7 @@ export function WeekView({
   onAppointmentClick,
   onEmptyDayClick,
 }: WeekViewProps): JSX.Element {
+  const t = useTranslation()
   const patients = usePatientStore((s) => s.patients)
   const patientMap = new Map(patients.map((p) => [p.id, p.fullName]))
 
@@ -50,7 +50,7 @@ export function WeekView({
   const today = todayIso()
 
   return (
-    <div className="flex flex-1 min-h-0 overflow-hidden border-t border-gray-200">
+    <div className="flex flex-1 min-h-0 overflow-hidden border-t border-gray-200 dark:border-gray-700">
       {weekDates.map((date) => {
         const iso = toIso(date)
         const isToday = iso === today
@@ -62,25 +62,25 @@ export function WeekView({
         return (
           <div
             key={iso}
-            className="flex flex-col flex-1 border-r border-gray-100 last:border-r-0 min-w-0"
+            className="flex flex-col flex-1 border-r border-gray-100 dark:border-gray-700 last:border-r-0 min-w-0"
           >
             {/* Column header */}
             <button
               type="button"
               onClick={() => onSelectDate(iso)}
               className={[
-                'flex flex-col items-center py-2 text-xs font-medium border-b border-gray-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+                'flex flex-col items-center py-2 text-xs font-medium border-b border-gray-200 dark:border-gray-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
                 isToday
                   ? 'bg-blue-600 text-white'
                   : isSelected
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'bg-white text-gray-500 hover:bg-gray-50',
+                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                  : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700',
               ].join(' ')}
               aria-label={`Select ${iso}`}
               aria-pressed={isSelected}
             >
-              <span>{DAY_NAMES[date.getDay()]}</span>
-              <span className={`text-base font-semibold ${isToday ? 'text-white' : 'text-gray-900'}`}>
+              <span>{t.days[date.getDay()]}</span>
+              <span className={`text-base font-semibold ${isToday ? 'text-white' : 'text-gray-900 dark:text-gray-100'}`}>
                 {date.getDate()}
               </span>
             </button>
@@ -89,7 +89,7 @@ export function WeekView({
             <button
               type="button"
               onClick={() => onEmptyDayClick(iso)}
-              className="flex-1 p-1.5 text-left cursor-pointer hover:bg-gray-50 transition-colors focus:outline-none"
+              className="flex-1 p-1.5 text-left cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors focus:outline-none"
               aria-label={`Add appointment on ${iso}`}
               tabIndex={-1}
             >

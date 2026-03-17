@@ -1,16 +1,11 @@
 import type { Appointment } from '@shared/types'
+import { useTranslation } from '@/lib/i18n'
 
 interface MiniCalendarProps {
   selectedDate: string // YYYY-MM-DD
   appointments: Appointment[]
   onSelectDate: (date: string) => void
 }
-
-const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-]
 
 function toIso(date: Date): string {
   const y = date.getFullYear()
@@ -53,6 +48,7 @@ export function MiniCalendar({
   appointments,
   onSelectDate,
 }: MiniCalendarProps): JSX.Element {
+  const t = useTranslation()
   const [selYear, selMonth] = selectedDate.split('-').map(Number)
   const today = todayIso()
 
@@ -60,6 +56,9 @@ export function MiniCalendar({
   const datesWithAppointments = new Set(appointments.map((a) => a.date))
 
   const days = getDaysInMonth(selYear, selMonth - 1)
+
+  // Derive 2-letter day labels from t.days (use first 2 chars of each)
+  const dayLabels = t.days.map((d) => d.slice(0, 2))
 
   function prevMonth(): void {
     const d = new Date(selYear, selMonth - 2, 1) // go back one month
@@ -78,7 +77,7 @@ export function MiniCalendar({
         <button
           type="button"
           onClick={prevMonth}
-          className="p-1 rounded hover:bg-gray-100 text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           aria-label="Previous month"
         >
           <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -89,13 +88,13 @@ export function MiniCalendar({
             />
           </svg>
         </button>
-        <span className="text-xs font-semibold text-gray-700">
-          {MONTH_NAMES[selMonth - 1]} {selYear}
+        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+          {t.months[selMonth - 1]} {selYear}
         </span>
         <button
           type="button"
           onClick={nextMonth}
-          className="p-1 rounded hover:bg-gray-100 text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           aria-label="Next month"
         >
           <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -110,8 +109,8 @@ export function MiniCalendar({
 
       {/* Day-of-week labels */}
       <div className="grid grid-cols-7 mb-1">
-        {DAY_LABELS.map((label) => (
-          <div key={label} className="text-center text-[10px] font-medium text-gray-400 py-0.5">
+        {dayLabels.map((label, idx) => (
+          <div key={idx} className="text-center text-[10px] font-medium text-gray-400 dark:text-gray-500 py-0.5">
             {label}
           </div>
         ))}
@@ -136,10 +135,10 @@ export function MiniCalendar({
                 isSelected
                   ? 'bg-blue-600 text-white font-semibold'
                   : isToday
-                  ? 'ring-1 ring-blue-400 text-blue-700 font-semibold'
+                  ? 'ring-1 ring-blue-400 text-blue-700 dark:text-blue-400 font-semibold'
                   : isCurrentMonth
-                  ? 'text-gray-700 hover:bg-gray-100'
-                  : 'text-gray-300 hover:bg-gray-50',
+                  ? 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  : 'text-gray-300 dark:text-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700',
               ].join(' ')}
               aria-label={iso}
               aria-pressed={isSelected}

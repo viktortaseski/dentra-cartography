@@ -1,6 +1,7 @@
 import { useState, useEffect, type FormEvent, type ChangeEvent } from 'react'
 import type { Patient, CreatePatientRequest, UpdatePatientRequest } from '@shared/types'
 import { usePatientStore } from '@/store/patientStore'
+import { useTranslation } from '@/lib/i18n'
 
 interface PatientFormProps {
   /** Pass a patient to edit, or undefined to create a new one */
@@ -41,6 +42,7 @@ function patientToFields(p: Patient): FormFields {
 }
 
 export function PatientForm({ patient, onClose }: PatientFormProps): JSX.Element {
+  const t = useTranslation()
   const { createPatient, updatePatient, isLoading, error } = usePatientStore()
 
   const [fields, setFields] = useState<FormFields>(
@@ -109,6 +111,9 @@ export function PatientForm({ patient, onClose }: PatientFormProps): JSX.Element
 
   const displayedError = validationError ?? error
 
+  const inputClass =
+    'w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+
   return (
     /* Backdrop */
     <div
@@ -117,16 +122,16 @@ export function PatientForm({ patient, onClose }: PatientFormProps): JSX.Element
       aria-modal="true"
       aria-labelledby="patient-form-title"
     >
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg mx-4 overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 id="patient-form-title" className="text-base font-semibold text-gray-900">
-            {patient ? 'Edit Patient' : 'New Patient'}
+        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+          <h2 id="patient-form-title" className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            {patient ? t.patientFormEdit : t.patientFormCreate}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             aria-label="Close form"
           >
             <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -139,15 +144,15 @@ export function PatientForm({ patient, onClose }: PatientFormProps): JSX.Element
         <form onSubmit={handleSubmit} noValidate>
           <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
             {displayedError && (
-              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2" role="alert">
+              <p className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2" role="alert">
                 {displayedError}
               </p>
             )}
 
             {/* Full name */}
             <div>
-              <label htmlFor="pf-fullName" className="block text-sm font-medium text-gray-700 mb-1">
-                Full Name <span className="text-red-500">*</span>
+              <label htmlFor="pf-fullName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {t.fullName} <span className="text-red-500">*</span>
               </label>
               <input
                 id="pf-fullName"
@@ -157,7 +162,7 @@ export function PatientForm({ patient, onClose }: PatientFormProps): JSX.Element
                 onChange={handleChange}
                 autoComplete="name"
                 required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={inputClass}
                 placeholder="Jane Smith"
               />
             </div>
@@ -165,8 +170,8 @@ export function PatientForm({ patient, onClose }: PatientFormProps): JSX.Element
             {/* DOB + Sex row */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="pf-dob" className="block text-sm font-medium text-gray-700 mb-1">
-                  Date of Birth <span className="text-red-500">*</span>
+                <label htmlFor="pf-dob" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {t.dateOfBirth} <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="pf-dob"
@@ -175,23 +180,23 @@ export function PatientForm({ patient, onClose }: PatientFormProps): JSX.Element
                   value={fields.dateOfBirth}
                   onChange={handleChange}
                   required
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={inputClass}
                 />
               </div>
               <div>
-                <label htmlFor="pf-sex" className="block text-sm font-medium text-gray-700 mb-1">
-                  Sex
+                <label htmlFor="pf-sex" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {t.sex}
                 </label>
                 <select
                   id="pf-sex"
                   name="sex"
                   value={fields.sex}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={inputClass}
                 >
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
+                  <option value="male">{t.sexMale}</option>
+                  <option value="female">{t.sexFemale}</option>
+                  <option value="other">{t.sexOther}</option>
                 </select>
               </div>
             </div>
@@ -199,8 +204,8 @@ export function PatientForm({ patient, onClose }: PatientFormProps): JSX.Element
             {/* Phone + Email row */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="pf-phone" className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone
+                <label htmlFor="pf-phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {t.phone}
                 </label>
                 <input
                   id="pf-phone"
@@ -209,13 +214,13 @@ export function PatientForm({ patient, onClose }: PatientFormProps): JSX.Element
                   value={fields.phone}
                   onChange={handleChange}
                   autoComplete="tel"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={inputClass}
                   placeholder="+1 555 000 0000"
                 />
               </div>
               <div>
-                <label htmlFor="pf-email" className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
+                <label htmlFor="pf-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {t.email}
                 </label>
                 <input
                   id="pf-email"
@@ -224,7 +229,7 @@ export function PatientForm({ patient, onClose }: PatientFormProps): JSX.Element
                   value={fields.email}
                   onChange={handleChange}
                   autoComplete="email"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={inputClass}
                   placeholder="jane@example.com"
                 />
               </div>
@@ -232,8 +237,8 @@ export function PatientForm({ patient, onClose }: PatientFormProps): JSX.Element
 
             {/* Medical alerts */}
             <div>
-              <label htmlFor="pf-medicalAlerts" className="block text-sm font-medium text-gray-700 mb-1">
-                Medical Alerts
+              <label htmlFor="pf-medicalAlerts" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {t.medicalAlerts}
               </label>
               <textarea
                 id="pf-medicalAlerts"
@@ -241,15 +246,15 @@ export function PatientForm({ patient, onClose }: PatientFormProps): JSX.Element
                 value={fields.medicalAlerts}
                 onChange={handleChange}
                 rows={2}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                className={`${inputClass} resize-none`}
                 placeholder="Allergies, conditions, medications..."
               />
             </div>
 
             {/* Notes */}
             <div>
-              <label htmlFor="pf-notes" className="block text-sm font-medium text-gray-700 mb-1">
-                Notes
+              <label htmlFor="pf-notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {t.notes}
               </label>
               <textarea
                 id="pf-notes"
@@ -257,27 +262,27 @@ export function PatientForm({ patient, onClose }: PatientFormProps): JSX.Element
                 value={fields.notes}
                 onChange={handleChange}
                 rows={3}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                className={`${inputClass} resize-none`}
                 placeholder="General notes..."
               />
             </div>
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
+          <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             >
-              Cancel
+              {t.cancel}
             </button>
             <button
               type="submit"
               disabled={isLoading}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             >
-              {isLoading ? 'Saving…' : patient ? 'Save Changes' : 'Create Patient'}
+              {isLoading ? t.saving : patient ? t.save : t.patientFormCreate}
             </button>
           </div>
         </form>
