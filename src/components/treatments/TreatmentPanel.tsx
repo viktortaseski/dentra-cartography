@@ -42,7 +42,7 @@ export function TreatmentPanel({ patientId, selectedToothFdi }: TreatmentPanelPr
   }
 
   return (
-    <div className="border-t border-gray-200 bg-white flex flex-col">
+    <div className="border-t border-gray-200 bg-white flex flex-col flex-shrink-0 max-h-48 overflow-y-auto">
       {/* Panel header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
         <div className="flex items-center gap-3">
@@ -93,7 +93,7 @@ export function TreatmentPanel({ patientId, selectedToothFdi }: TreatmentPanelPr
       </div>
 
       {/* Body */}
-      <div className="overflow-y-auto max-h-64">
+      <div>
         {/* Loading */}
         {isLoading && (
           <p className="text-sm text-gray-500 px-4 py-6 text-center" aria-live="polite">

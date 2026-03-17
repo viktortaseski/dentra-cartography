@@ -12,6 +12,7 @@ const SELECT_TREATMENT = `
     date_performed AS datePerformed,
     performed_by   AS performedBy,
     notes,
+    price,
     created_at     AS createdAt
   FROM treatments
 `
@@ -38,8 +39,8 @@ export function addTreatment(db: Database, data: AddTreatmentRequest): Treatment
   const result = db
     .prepare(
       `INSERT INTO treatments
-        (patient_id, tooth_fdi, surface, condition_type, status, date_performed, performed_by, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        (patient_id, tooth_fdi, surface, condition_type, status, date_performed, performed_by, notes, price)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       data.patientId,
@@ -49,7 +50,8 @@ export function addTreatment(db: Database, data: AddTreatmentRequest): Treatment
       data.status,
       data.datePerformed,
       data.performedBy ?? null,
-      data.notes ?? null
+      data.notes ?? null,
+      data.price ?? null
     )
 
   const treatment = db

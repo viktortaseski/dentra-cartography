@@ -4,14 +4,19 @@ import { useChartStore } from '@/store/chartStore'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { TopBar } from '@/components/layout/TopBar'
 import { PatientForm } from '@/components/patients/PatientForm'
+import { PatientDetailCard } from '@/components/patients/PatientDetailCard'
 import { TreatmentPanel } from '@/components/treatments'
 import { ChartView } from '@/pages/ChartView'
+import { Settings } from '@/pages/Settings'
+import { CalendarView } from '@/pages/CalendarView'
 import type { Patient } from '@/types'
 
 type ModalState =
   | { kind: 'closed' }
   | { kind: 'create' }
   | { kind: 'edit'; patient: Patient }
+
+type ActiveView = 'chart' | 'settings' | 'calendar'
 
 export function Dashboard(): JSX.Element {
   const { patients, selectedPatientId, isLoading, loadPatients, selectPatient, archivePatient } =
@@ -20,6 +25,7 @@ export function Dashboard(): JSX.Element {
   const selectedToothFdi = useChartStore((s) => s.selectedToothFdi)
 
   const [modal, setModal] = useState<ModalState>({ kind: 'closed' })
+  const [activeView, setActiveView] = useState<ActiveView>('chart')
 
   useEffect(() => {
     void loadPatients()
@@ -50,6 +56,29 @@ export function Dashboard(): JSX.Element {
     }
   }
 
+  function handleOpenSettings(): void {
+    setActiveView('settings')
+  }
+
+  function handleOpenCalendar(): void {
+    setActiveView('calendar')
+  }
+
+  function handleSelectPatient(id: number): void {
+    selectPatient(id)
+    setActiveView('chart')
+  }
+
+  const topBarViewTitle =
+    activeView === 'settings'
+      ? 'Settings'
+      : activeView === 'calendar'
+      ? 'Calendar'
+      : undefined
+
+  // When in chart view with no patient, show no patient in TopBar title
+  const topBarPatient = activeView === 'chart' ? selectedPatient : null
+
   return (
     <div className="flex h-screen bg-gray-50 text-gray-900 overflow-hidden">
       {/* Left sidebar */}
@@ -57,61 +86,83 @@ export function Dashboard(): JSX.Element {
         patients={patients}
         selectedPatientId={selectedPatientId}
         isLoading={isLoading}
-        onSelectPatient={selectPatient}
+        onSelectPatient={handleSelectPatient}
         onNewPatient={handleNewPatient}
+        onOpenSettings={handleOpenSettings}
+        onOpenCalendar={handleOpenCalendar}
       />
 
       {/* Right main area */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <TopBar
-          patient={selectedPatient}
-          onEditPatient={handleEditPatient}
-          onArchivePatient={() => void handleArchivePatient()}
+          patient={topBarPatient}
+          viewTitle={topBarViewTitle}
         />
 
-        <main className="flex-1 overflow-y-auto flex flex-col">
-          {selectedPatient ? (
+        <main className="flex-1 overflow-hidden flex flex-col min-h-0">
+          {activeView === 'settings' && <Settings />}
+
+          {activeView === 'calendar' && <CalendarView />}
+
+          {activeView === 'chart' && (
             <>
-              <ChartView patientId={selectedPatient.id} />
-              <TreatmentPanel
-                patientId={selectedPatient.id}
-                selectedToothFdi={selectedToothFdi}
-              />
-            </>
-          ) : (
-            <div className="flex flex-1 items-center justify-center">
-              <div className="text-center">
-                <svg
-                  className="mx-auto w-12 h-12 text-gray-300 mb-3"
-                  viewBox="0 0 48 48"
-                  fill="none"
-                  aria-hidden="true"
-                >
-                  <rect x="8" y="8" width="32" height="32" rx="6" stroke="currentColor" strokeWidth="2" />
-                  <circle cx="24" cy="20" r="5" stroke="currentColor" strokeWidth="2" />
-                  <path
-                    d="M14 36c0-5.523 4.477-10 10-10s10 4.477 10 10"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
+              {selectedPatient ? (
+                <>
+                  <PatientDetailCard
+                    patient={selectedPatient}
+                    onEdit={handleEditPatient}
+                    onArchive={() => void handleArchivePatient()}
                   />
-                </svg>
-                <p className="text-base font-medium text-gray-500">
-                  Select a patient to view their chart
-                </p>
-                <p className="text-sm text-gray-400 mt-1">
-                  Choose a patient from the sidebar or create a new one.
-                </p>
-              </div>
-            </div>
+                  <div className="flex-1 min-h-0 overflow-auto">
+                    <ChartView patientId={selectedPatient.id} />
+                  </div>
+                  <TreatmentPanel
+                    patientId={selectedPatient.id}
+                    selectedToothFdi={selectedToothFdi}
+                  />
+                </>
+              ) : (
+                <div className="flex flex-1 items-center justify-center">
+                  <div className="text-center">
+                    <svg
+                      className="mx-auto w-12 h-12 text-gray-300 mb-3"
+                      viewBox="0 0 48 48"
+                      fill="none"
+                      aria-hidden="true"
+                    >
+                      <rect
+                        x="8"
+                        y="8"
+                        width="32"
+                        height="32"
+                        rx="6"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      />
+                      <circle cx="24" cy="20" r="5" stroke="currentColor" strokeWidth="2" />
+                      <path
+                        d="M14 36c0-5.523 4.477-10 10-10s10 4.477 10 10"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    <p className="text-base font-medium text-gray-500">
+                      Select a patient to view their chart
+                    </p>
+                    <p className="text-sm text-gray-400 mt-1">
+                      Choose a patient from the sidebar or create a new one.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </main>
       </div>
 
-      {/* Modal */}
-      {modal.kind === 'create' && (
-        <PatientForm onClose={handleCloseModal} />
-      )}
+      {/* Modals */}
+      {modal.kind === 'create' && <PatientForm onClose={handleCloseModal} />}
       {modal.kind === 'edit' && (
         <PatientForm patient={modal.patient} onClose={handleCloseModal} />
       )}

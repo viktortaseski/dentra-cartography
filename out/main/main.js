@@ -120,7 +120,7 @@ function archivePatient(db2, id) {
   db2.prepare(`UPDATE patients SET archived_at = datetime('now') WHERE id = ?`).run(id);
 }
 const VALID_SEX = /* @__PURE__ */ new Set(["male", "female", "other"]);
-function validateCreateRequest(data) {
+function validateCreateRequest$1(data) {
   if (!data || typeof data !== "object") {
     throw new Error("Invalid patient data: expected an object");
   }
@@ -147,7 +147,7 @@ function validateCreateRequest(data) {
     notes: typeof d.notes === "string" ? d.notes : null
   };
 }
-function validateUpdateRequest(data) {
+function validateUpdateRequest$1(data) {
   if (!data || typeof data !== "object") {
     throw new Error("Invalid update data: expected an object");
   }
@@ -197,10 +197,10 @@ function registerPatientHandlers() {
     return getPatient(getDb(), validateId(id));
   });
   electron.ipcMain.handle("patients:create", (_event, data) => {
-    return createPatient(getDb(), validateCreateRequest(data));
+    return createPatient(getDb(), validateCreateRequest$1(data));
   });
   electron.ipcMain.handle("patients:update", (_event, id, data) => {
-    return updatePatient(getDb(), validateId(id), validateUpdateRequest(data));
+    return updatePatient(getDb(), validateId(id), validateUpdateRequest$1(data));
   });
   electron.ipcMain.handle("patients:archive", (_event, id) => {
     archivePatient(getDb(), validateId(id));
@@ -318,6 +318,7 @@ const SELECT_TREATMENT = `
     date_performed AS datePerformed,
     performed_by   AS performedBy,
     notes,
+    price,
     created_at     AS createdAt
   FROM treatments
 `;
@@ -332,8 +333,8 @@ function listTreatmentsForTooth(db2, patientId, toothFdi) {
 function addTreatment(db2, data) {
   const result = db2.prepare(
     `INSERT INTO treatments
-        (patient_id, tooth_fdi, surface, condition_type, status, date_performed, performed_by, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        (patient_id, tooth_fdi, surface, condition_type, status, date_performed, performed_by, notes, price)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     data.patientId,
     data.toothFdi,
@@ -342,7 +343,8 @@ function addTreatment(db2, data) {
     data.status,
     data.datePerformed,
     data.performedBy ?? null,
-    data.notes ?? null
+    data.notes ?? null,
+    data.price ?? null
   );
   const treatment = db2.prepare(`${SELECT_TREATMENT} WHERE id = ?`).get(result.lastInsertRowid);
   if (!treatment) {
@@ -372,7 +374,7 @@ const VALID_CONDITIONS = /* @__PURE__ */ new Set([
   "fracture",
   "watch"
 ]);
-const VALID_STATUSES = /* @__PURE__ */ new Set(["planned", "completed", "referred"]);
+const VALID_STATUSES$1 = /* @__PURE__ */ new Set(["planned", "completed", "referred"]);
 function isValidFdiNumber(n) {
   const quadrant = Math.floor(n / 10);
   const position = n % 10;
@@ -415,13 +417,20 @@ function validateAddTreatmentRequest(data) {
       `Invalid treatment data: conditionType must be one of ${[...VALID_CONDITIONS].join(", ")}`
     );
   }
-  if (typeof d.status !== "string" || !VALID_STATUSES.has(d.status)) {
+  if (typeof d.status !== "string" || !VALID_STATUSES$1.has(d.status)) {
     throw new Error(
-      `Invalid treatment data: status must be one of ${[...VALID_STATUSES].join(", ")}`
+      `Invalid treatment data: status must be one of ${[...VALID_STATUSES$1].join(", ")}`
     );
   }
   if (typeof d.datePerformed !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(d.datePerformed)) {
     throw new Error("Invalid treatment data: datePerformed must be a YYYY-MM-DD string");
+  }
+  let price = null;
+  if (d.price !== null && d.price !== void 0) {
+    if (typeof d.price !== "number" || !isFinite(d.price) || d.price < 0) {
+      throw new Error("Invalid treatment data: price must be a non-negative finite number or null");
+    }
+    price = d.price;
   }
   return {
     patientId: d.patientId,
@@ -431,7 +440,8 @@ function validateAddTreatmentRequest(data) {
     status: d.status,
     datePerformed: d.datePerformed,
     performedBy: typeof d.performedBy === "string" ? d.performedBy : null,
-    notes: typeof d.notes === "string" ? d.notes : null
+    notes: typeof d.notes === "string" ? d.notes : null,
+    price
   };
 }
 function registerTreatmentHandlers() {
@@ -448,10 +458,330 @@ function registerTreatmentHandlers() {
     return addTreatment(getDb(), validateAddTreatmentRequest(data));
   });
 }
+const KEYS = [
+  "clinicName",
+  "clinicAddress",
+  "clinicPhone",
+  "clinicEmail",
+  "clinicWebsite",
+  "dentistName"
+];
+function toDbKey(key) {
+  return key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
+}
+function getClinicSettings() {
+  const db2 = getDb();
+  const rows = db2.prepare("SELECT key, value FROM clinic_settings").all();
+  const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  return {
+    clinicName: map["clinic_name"] ?? "",
+    clinicAddress: map["clinic_address"] ?? "",
+    clinicPhone: map["clinic_phone"] ?? "",
+    clinicEmail: map["clinic_email"] ?? "",
+    clinicWebsite: map["clinic_website"] ?? "",
+    dentistName: map["dentist_name"] ?? ""
+  };
+}
+function updateClinicSettings(data) {
+  const db2 = getDb();
+  const update = db2.prepare(
+    "INSERT OR REPLACE INTO clinic_settings (key, value) VALUES (?, ?)"
+  );
+  const tx = db2.transaction((updates) => {
+    for (const key of KEYS) {
+      if (key in updates && updates[key] !== void 0) {
+        update.run(toDbKey(key), updates[key]);
+      }
+    }
+  });
+  tx(data);
+  return getClinicSettings();
+}
+const VALID_SETTINGS_KEYS = /* @__PURE__ */ new Set([
+  "clinicName",
+  "clinicAddress",
+  "clinicPhone",
+  "clinicEmail",
+  "clinicWebsite",
+  "dentistName"
+]);
+function validatePartialClinicSettings(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    throw new Error("Invalid clinic settings: expected a non-array object");
+  }
+  const d = data;
+  const validated = {};
+  for (const key of VALID_SETTINGS_KEYS) {
+    if (!(key in d)) continue;
+    const val = d[key];
+    if (typeof val !== "string") {
+      throw new Error(`Invalid clinic settings: field "${key}" must be a string`);
+    }
+    validated[key] = val;
+  }
+  return validated;
+}
+function registerClinicSettingsHandlers() {
+  electron.ipcMain.handle("clinic:getSettings", () => {
+    return getClinicSettings();
+  });
+  electron.ipcMain.handle("clinic:updateSettings", (_event, data) => {
+    const validated = validatePartialClinicSettings(data);
+    return updateClinicSettings(validated);
+  });
+}
+function rowToAppointment(row) {
+  return {
+    id: row.id,
+    patientId: row.patient_id,
+    title: row.title,
+    date: row.date,
+    startTime: row.start_time,
+    endTime: row.end_time,
+    status: row.status,
+    notes: row.notes,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+const SELECT_APPOINTMENT = `
+  SELECT
+    id,
+    patient_id,
+    title,
+    date,
+    start_time,
+    end_time,
+    status,
+    notes,
+    created_at,
+    updated_at
+  FROM appointments
+`;
+function listAppointments(date) {
+  const db2 = getDb();
+  if (date !== void 0) {
+    const rows2 = db2.prepare(`${SELECT_APPOINTMENT} WHERE date = ? ORDER BY start_time ASC`).all(date);
+    return rows2.map(rowToAppointment);
+  }
+  const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  const rows = db2.prepare(`${SELECT_APPOINTMENT} WHERE date >= ? ORDER BY date ASC, start_time ASC`).all(today);
+  return rows.map(rowToAppointment);
+}
+function listAppointmentsForPatient(patientId) {
+  const db2 = getDb();
+  const rows = db2.prepare(`${SELECT_APPOINTMENT} WHERE patient_id = ? ORDER BY date DESC, start_time DESC`).all(patientId);
+  return rows.map(rowToAppointment);
+}
+function createAppointment(data) {
+  const db2 = getDb();
+  const result = db2.prepare(
+    `INSERT INTO appointments
+        (patient_id, title, date, start_time, end_time, status, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    data.patientId,
+    data.title,
+    data.date,
+    data.startTime,
+    data.endTime,
+    data.status,
+    data.notes ?? null
+  );
+  const row = db2.prepare(`${SELECT_APPOINTMENT} WHERE id = ?`).get(result.lastInsertRowid);
+  if (!row) {
+    throw new Error(
+      `Failed to retrieve appointment after insert (rowid ${result.lastInsertRowid})`
+    );
+  }
+  return rowToAppointment(row);
+}
+function updateAppointment(id, data) {
+  const db2 = getDb();
+  const setClauses = [];
+  const params = [];
+  if (data.patientId !== void 0) {
+    setClauses.push("patient_id = ?");
+    params.push(data.patientId);
+  }
+  if (data.title !== void 0) {
+    setClauses.push("title = ?");
+    params.push(data.title);
+  }
+  if (data.date !== void 0) {
+    setClauses.push("date = ?");
+    params.push(data.date);
+  }
+  if (data.startTime !== void 0) {
+    setClauses.push("start_time = ?");
+    params.push(data.startTime);
+  }
+  if (data.endTime !== void 0) {
+    setClauses.push("end_time = ?");
+    params.push(data.endTime);
+  }
+  if (data.status !== void 0) {
+    setClauses.push("status = ?");
+    params.push(data.status);
+  }
+  if ("notes" in data) {
+    setClauses.push("notes = ?");
+    params.push(data.notes ?? null);
+  }
+  if (setClauses.length === 0) {
+    const row = db2.prepare(`${SELECT_APPOINTMENT} WHERE id = ?`).get(id);
+    return row ? rowToAppointment(row) : void 0;
+  }
+  setClauses.push("updated_at = datetime('now')");
+  params.push(id);
+  db2.prepare(`UPDATE appointments SET ${setClauses.join(", ")} WHERE id = ?`).run(...params);
+  const updated = db2.prepare(`${SELECT_APPOINTMENT} WHERE id = ?`).get(id);
+  return updated ? rowToAppointment(updated) : void 0;
+}
+function deleteAppointment(id) {
+  const db2 = getDb();
+  const result = db2.prepare("DELETE FROM appointments WHERE id = ?").run(id);
+  return result.changes > 0;
+}
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_RE = /^\d{2}:\d{2}$/;
+const VALID_STATUSES = /* @__PURE__ */ new Set([
+  "scheduled",
+  "completed",
+  "cancelled",
+  "no_show"
+]);
+function validateDate(value, field) {
+  if (typeof value !== "string" || !DATE_RE.test(value)) {
+    throw new Error(`Invalid appointment: "${field}" must be a YYYY-MM-DD string`);
+  }
+  return value;
+}
+function validateTime(value, field) {
+  if (typeof value !== "string" || !TIME_RE.test(value)) {
+    throw new Error(`Invalid appointment: "${field}" must be a HH:MM string`);
+  }
+  return value;
+}
+function validatePositiveInt(value, field) {
+  if (typeof value !== "number" || !Number.isInteger(value) || value <= 0) {
+    throw new Error(`Invalid appointment: "${field}" must be a positive integer`);
+  }
+  return value;
+}
+function validateStatus(value) {
+  if (typeof value !== "string" || !VALID_STATUSES.has(value)) {
+    throw new Error(
+      `Invalid appointment: "status" must be one of ${[...VALID_STATUSES].join(", ")}`
+    );
+  }
+  return value;
+}
+function validateCreateRequest(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    throw new Error("Invalid appointment: expected a non-array object");
+  }
+  const d = data;
+  const patientId = validatePositiveInt(d.patientId, "patientId");
+  if (typeof d.title !== "string" || d.title.trim().length === 0) {
+    throw new Error('Invalid appointment: "title" must be a non-empty string');
+  }
+  const title = d.title.trim();
+  const date = validateDate(d.date, "date");
+  const startTime = validateTime(d.startTime, "startTime");
+  const endTime = validateTime(d.endTime, "endTime");
+  if (endTime <= startTime) {
+    throw new Error('Invalid appointment: "endTime" must be after "startTime"');
+  }
+  const status = validateStatus(d.status);
+  const notes = d.notes === null || d.notes === void 0 ? null : typeof d.notes === "string" ? d.notes : (() => {
+    throw new Error('Invalid appointment: "notes" must be a string or null');
+  })();
+  return { patientId, title, date, startTime, endTime, status, notes };
+}
+function validateUpdateRequest(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    throw new Error("Invalid appointment update: expected a non-array object");
+  }
+  const d = data;
+  const validated = {};
+  if ("patientId" in d) {
+    validated.patientId = validatePositiveInt(d.patientId, "patientId");
+  }
+  if ("title" in d) {
+    if (typeof d.title !== "string" || d.title.trim().length === 0) {
+      throw new Error('Invalid appointment update: "title" must be a non-empty string');
+    }
+    validated.title = d.title.trim();
+  }
+  if ("date" in d) {
+    validated.date = validateDate(d.date, "date");
+  }
+  if ("startTime" in d) {
+    validated.startTime = validateTime(d.startTime, "startTime");
+  }
+  if ("endTime" in d) {
+    validated.endTime = validateTime(d.endTime, "endTime");
+  }
+  if (validated.startTime !== void 0 && validated.endTime !== void 0) {
+    if (validated.endTime <= validated.startTime) {
+      throw new Error('Invalid appointment update: "endTime" must be after "startTime"');
+    }
+  }
+  if ("status" in d) {
+    validated.status = validateStatus(d.status);
+  }
+  if ("notes" in d) {
+    if (d.notes !== null && typeof d.notes !== "string") {
+      throw new Error('Invalid appointment update: "notes" must be a string or null');
+    }
+    validated.notes = d.notes;
+  }
+  return validated;
+}
+function registerAppointmentHandlers() {
+  electron.ipcMain.handle("appointments:list", (_event, date) => {
+    if (date !== void 0 && date !== null) {
+      const validated = validateDate(date, "date");
+      return listAppointments(validated);
+    }
+    return listAppointments();
+  });
+  electron.ipcMain.handle(
+    "appointments:listForPatient",
+    (_event, patientId) => {
+      return listAppointmentsForPatient(validatePositiveInt(patientId, "patientId"));
+    }
+  );
+  electron.ipcMain.handle("appointments:create", (_event, data) => {
+    return createAppointment(validateCreateRequest(data));
+  });
+  electron.ipcMain.handle(
+    "appointments:update",
+    (_event, id, data) => {
+      const validId = validatePositiveInt(id, "id");
+      const validData = validateUpdateRequest(data);
+      const result = updateAppointment(validId, validData);
+      if (!result) {
+        throw new Error(`Appointment with id ${validId} not found`);
+      }
+      return result;
+    }
+  );
+  electron.ipcMain.handle("appointments:delete", (_event, id) => {
+    const validId = validatePositiveInt(id, "id");
+    const deleted = deleteAppointment(validId);
+    if (!deleted) {
+      throw new Error(`Appointment with id ${validId} not found`);
+    }
+  });
+}
 function registerIpcHandlers() {
   registerPatientHandlers();
   registerTeethHandlers();
   registerTreatmentHandlers();
+  registerClinicSettingsHandlers();
+  registerAppointmentHandlers();
 }
 function createWindow() {
   const win = new electron.BrowserWindow({

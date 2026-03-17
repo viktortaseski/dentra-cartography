@@ -69,10 +69,42 @@ export interface Treatment {
   datePerformed: string // ISO date YYYY-MM-DD
   performedBy: string | null
   notes: string | null
+  price: number | null
   createdAt: string
 }
 
 export type AddTreatmentRequest = Omit<Treatment, 'id' | 'createdAt'>
+
+// ── Clinic Settings ──────────────────────────────────────────────────────────
+
+export interface ClinicSettings {
+  clinicName: string
+  clinicAddress: string
+  clinicPhone: string
+  clinicEmail: string
+  clinicWebsite: string
+  dentistName: string
+}
+
+// ── Appointments ─────────────────────────────────────────────────────────────
+
+export type AppointmentStatus = 'scheduled' | 'completed' | 'cancelled' | 'no_show'
+
+export interface Appointment {
+  id: number
+  patientId: number
+  title: string
+  date: string         // YYYY-MM-DD
+  startTime: string    // HH:MM
+  endTime: string      // HH:MM
+  status: AppointmentStatus
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type CreateAppointmentRequest = Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>
+export type UpdateAppointmentRequest = Partial<CreateAppointmentRequest>
 
 // ── IPC Bridge ───────────────────────────────────────────────────────────────
 
@@ -89,6 +121,17 @@ export interface ElectronAPI {
   listTreatmentsForTooth: (patientId: number, toothFdi: number) => Promise<Treatment[]>
   listTreatmentsForPatient: (patientId: number) => Promise<Treatment[]>
   addTreatment: (data: AddTreatmentRequest) => Promise<Treatment>
+
+  // Clinic settings
+  getClinicSettings: () => Promise<ClinicSettings>
+  updateClinicSettings: (data: Partial<ClinicSettings>) => Promise<ClinicSettings>
+
+  // Appointments
+  listAppointments: (date?: string) => Promise<Appointment[]>
+  listAppointmentsForPatient: (patientId: number) => Promise<Appointment[]>
+  createAppointment: (data: CreateAppointmentRequest) => Promise<Appointment>
+  updateAppointment: (id: number, data: UpdateAppointmentRequest) => Promise<Appointment>
+  deleteAppointment: (id: number) => Promise<void>
 }
 
 declare global {

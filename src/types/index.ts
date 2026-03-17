@@ -12,5 +12,10 @@ export type {
   TreatmentStatus,
   Treatment,
   AddTreatmentRequest,
+  ClinicSettings,
+  AppointmentStatus,
+  Appointment,
+  CreateAppointmentRequest,
+  UpdateAppointmentRequest,
   ElectronAPI,
 } from '@shared/types'

@@ -1,1 +1,4 @@
-// PDF/PNG report components — will be implemented in Phase 4
+export { PatientReport } from '@/components/reports/PatientReport'
+export type { PatientReportProps } from '@/components/reports/PatientReport'
+export { ReportButton } from '@/components/reports/ReportButton'
+export type { ReportButtonProps } from '@/components/reports/ReportButton'

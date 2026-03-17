@@ -18,7 +18,19 @@ const api: ElectronAPI = {
     ipcRenderer.invoke('treatments:listForTooth', patientId, toothId),
   listTreatmentsForPatient: (patientId) =>
     ipcRenderer.invoke('treatments:listForPatient', patientId),
-  addTreatment: (data) => ipcRenderer.invoke('treatments:add', data)
+  addTreatment: (data) => ipcRenderer.invoke('treatments:add', data),
+
+  // Clinic settings
+  getClinicSettings: () => ipcRenderer.invoke('clinic:getSettings'),
+  updateClinicSettings: (data) => ipcRenderer.invoke('clinic:updateSettings', data),
+
+  // Appointments
+  listAppointments: (date?) => ipcRenderer.invoke('appointments:list', date),
+  listAppointmentsForPatient: (patientId) =>
+    ipcRenderer.invoke('appointments:listForPatient', patientId),
+  createAppointment: (data) => ipcRenderer.invoke('appointments:create', data),
+  updateAppointment: (id, data) => ipcRenderer.invoke('appointments:update', id, data),
+  deleteAppointment: (id) => ipcRenderer.invoke('appointments:delete', id)
 }
 
 contextBridge.exposeInMainWorld('electron', api)

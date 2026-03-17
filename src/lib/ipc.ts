@@ -6,6 +6,10 @@ import type {
   SetToothConditionRequest,
   Treatment,
   AddTreatmentRequest,
+  ClinicSettings,
+  Appointment,
+  CreateAppointmentRequest,
+  UpdateAppointmentRequest,
 } from '@shared/types'
 
 // Patient operations
@@ -39,3 +43,28 @@ export const listTreatmentsForPatient = (patientId: number): Promise<Treatment[]
 
 export const addTreatment = (data: AddTreatmentRequest): Promise<Treatment> =>
   window.electron.addTreatment(data)
+
+// Clinic settings
+export const getClinicSettings = (): Promise<ClinicSettings> =>
+  window.electron.getClinicSettings()
+
+export const updateClinicSettings = (data: Partial<ClinicSettings>): Promise<ClinicSettings> =>
+  window.electron.updateClinicSettings(data)
+
+// Appointment operations
+export const listAppointments = (date?: string): Promise<Appointment[]> =>
+  window.electron.listAppointments(date)
+
+export const listAppointmentsForPatient = (patientId: number): Promise<Appointment[]> =>
+  window.electron.listAppointmentsForPatient(patientId)
+
+export const createAppointment = (data: CreateAppointmentRequest): Promise<Appointment> =>
+  window.electron.createAppointment(data)
+
+export const updateAppointment = (
+  id: number,
+  data: UpdateAppointmentRequest
+): Promise<Appointment> => window.electron.updateAppointment(id, data)
+
+export const deleteAppointment = (id: number): Promise<void> =>
+  window.electron.deleteAppointment(id)

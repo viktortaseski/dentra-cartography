@@ -91,6 +91,14 @@ function validateAddTreatmentRequest(data: unknown): AddTreatmentRequest {
     throw new Error('Invalid treatment data: datePerformed must be a YYYY-MM-DD string')
   }
 
+  let price: number | null = null
+  if (d.price !== null && d.price !== undefined) {
+    if (typeof d.price !== 'number' || !isFinite(d.price) || d.price < 0) {
+      throw new Error('Invalid treatment data: price must be a non-negative finite number or null')
+    }
+    price = d.price
+  }
+
   return {
     patientId: d.patientId,
     toothFdi: d.toothFdi,
@@ -99,7 +107,8 @@ function validateAddTreatmentRequest(data: unknown): AddTreatmentRequest {
     status: d.status as TreatmentStatus,
     datePerformed: d.datePerformed,
     performedBy: typeof d.performedBy === 'string' ? d.performedBy : null,
-    notes: typeof d.notes === 'string' ? d.notes : null
+    notes: typeof d.notes === 'string' ? d.notes : null,
+    price
   }
 }
 

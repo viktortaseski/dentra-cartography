@@ -16,6 +16,11 @@ function formatDate(iso: string): string {
   return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
+function formatPrice(price: number | null): string {
+  if (price === null) return '\u2014'
+  return `$${price.toFixed(2)}`
+}
+
 function truncate(text: string, max: number): string {
   return text.length > max ? text.slice(0, max) + '…' : text
 }
@@ -68,12 +73,17 @@ export function TreatmentRow({ treatment }: TreatmentRowProps): JSX.Element {
       {/* Notes */}
       {treatment.notes && (
         <span
-          className="text-xs text-gray-400 min-w-0 truncate pt-0.5"
+          className="text-xs text-gray-400 min-w-0 truncate pt-0.5 flex-1"
           title={treatment.notes}
         >
           {truncate(treatment.notes, 60)}
         </span>
       )}
+
+      {/* Price — right-aligned */}
+      <span className="text-xs font-medium text-gray-700 ml-auto shrink-0 pt-0.5 tabular-nums">
+        {formatPrice(treatment.price)}
+      </span>
     </div>
   )
 }

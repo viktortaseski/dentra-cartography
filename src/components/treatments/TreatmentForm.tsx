@@ -25,6 +25,7 @@ interface FormFields {
   datePerformed: string
   performedBy: string
   notes: string
+  price: string
 }
 
 const SURFACES: ToothSurface[] = ['occlusal', 'mesial', 'distal', 'buccal', 'lingual', 'incisal']
@@ -66,6 +67,7 @@ export function TreatmentForm({
     datePerformed: todayIso(),
     performedBy: '',
     notes: '',
+    price: '',
   })
 
   const [validationError, setValidationError] = useState<string | null>(null)
@@ -95,6 +97,16 @@ export function TreatmentForm({
       return
     }
 
+    let price: number | null = null
+    if (fields.price.trim() !== '') {
+      const parsed = parseFloat(fields.price)
+      if (isNaN(parsed) || parsed < 0) {
+        setValidationError('Price must be a non-negative number.')
+        return
+      }
+      price = parsed
+    }
+
     const data: AddTreatmentRequest = {
       patientId,
       toothFdi: fdiNum,
@@ -104,6 +116,7 @@ export function TreatmentForm({
       datePerformed: fields.datePerformed,
       performedBy: fields.performedBy.trim() || null,
       notes: fields.notes.trim() || null,
+      price,
     }
 
     await addTreatment(data)
@@ -266,23 +279,46 @@ export function TreatmentForm({
               </div>
             </div>
 
-            {/* Performed by */}
-            <div>
-              <label
-                htmlFor="tf-performedBy"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Performed By
-              </label>
-              <input
-                id="tf-performedBy"
-                name="performedBy"
-                type="text"
-                value={fields.performedBy}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Dr. Smith"
-              />
+            {/* Performed by + Price row */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label
+                  htmlFor="tf-performedBy"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Performed By
+                </label>
+                <input
+                  id="tf-performedBy"
+                  name="performedBy"
+                  type="text"
+                  value={fields.performedBy}
+                  onChange={handleChange}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Dr. Smith"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="tf-price"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Price{' '}
+                  <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <input
+                  id="tf-price"
+                  name="price"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={fields.price}
+                  onChange={handleChange}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="0.00"
+                />
+              </div>
             </div>
 
             {/* Notes */}
