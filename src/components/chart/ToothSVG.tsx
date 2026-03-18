@@ -115,7 +115,7 @@ export function ToothSVG({ fdi, chartEntry, isSelected }: ToothSVGProps): JSX.El
 
       {/* Tooth background image — rendered when image is available, transparent background */}
       {theme === 'dark' && imageSrc !== null && (
-        <rect x={-2} y={-2} width={64} height={58} rx={5} fill="white" opacity={0.92} aria-hidden="true" />
+        <rect x={-2} y={-2} width={64} height={58} rx={0} fill="white" opacity={0.92} aria-hidden="true" />
       )}
       {imageSrc !== null ? (
         <image
@@ -215,17 +215,6 @@ export function ToothSVG({ fdi, chartEntry, isSelected }: ToothSVGProps): JSX.El
         onMouseLeave={() => setHoveredSurface(null)}
       />
 
-      {/* FDI number label — sits in the lower portion of the 68px tall viewBox */}
-      <text
-        x="30"
-        y="62"
-        textAnchor="middle"
-        fontSize="10"
-        fill="#6b7280"
-        aria-hidden="true"
-      >
-        {fdi}
-      </text>
     </svg>
   )
 }

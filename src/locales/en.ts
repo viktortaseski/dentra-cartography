@@ -112,6 +112,46 @@ export const en = {
   languageMk: 'Македонски',
   languageSq: 'Shqip',
 
+  // Revenue
+  revenue: 'Revenue',
+  totalEarned: 'Total Earned',
+  outstanding: 'Outstanding',
+  earnedThisMonth: 'Earned This Month',
+  outstandingThisMonth: 'Outstanding This Month',
+  allTransactions: 'All Transactions',
+  noTransactions: 'No transactions with a price recorded yet.',
+  revenueLoading: 'Loading revenue data…',
+
+  // PDF documents
+  invoice: 'Invoice',
+  treatmentPlan: 'Treatment Plan',
+  patientReport: 'Patient Report',
+  treatmentPlanNotes: 'Treatment Plan Notes',
+  doctorNotesLabel: "Doctor's notes (optional)",
+  generatePdf: 'Generate PDF',
+
+  // Treatment edit
+  estPrice: 'Est. price',
+  editNotesAria: 'Edit notes for this treatment',
+  saveNotes: 'Save',
+  cancelEdit: 'Cancel',
+
+  // Font size (Settings)
+  fontSize: 'Font Size',
+  fontSizeDesc: 'Increase the text size across the entire application.',
+  fontSizeNormal: 'Normal',
+  fontSizeNormalDesc: 'Default size',
+  fontSizeLarge: 'Large',
+  fontSizeLargeDesc: 'Easier to read',
+
+  // Tooth notes
+  toothNotes: 'Tooth Notes',
+  saveNote: 'Save Note',
+  noteSaved: 'Saved',
+
+  // Misc
+  noPatientsMatch: 'No patients match.',
+
   // PDF
   exportPdf: 'Export PDF',
   generating: 'Generating…',

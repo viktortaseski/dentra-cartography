@@ -6,6 +6,7 @@ import type {
   SetToothConditionRequest,
   Treatment,
   AddTreatmentRequest,
+  UpdateTreatmentNotesRequest,
   ClinicSettings,
   Appointment,
   CreateAppointmentRequest,
@@ -13,6 +14,8 @@ import type {
   UpdateStatus,
   LicenseStatus,
   ActivateResult,
+  CsvImportResult,
+  RevenueStats,
 } from '@shared/types'
 
 // Patient operations
@@ -46,6 +49,9 @@ export const listTreatmentsForPatient = (patientId: number): Promise<Treatment[]
 
 export const addTreatment = (data: AddTreatmentRequest): Promise<Treatment> =>
   window.electron.addTreatment(data)
+
+export const updateTreatmentNotes = (data: UpdateTreatmentNotesRequest): Promise<Treatment> =>
+  window.electron.updateTreatmentNotes(data)
 
 // Clinic settings
 export const getClinicSettings = (): Promise<ClinicSettings> =>
@@ -92,3 +98,24 @@ export const getOnboardingStatus = (): Promise<boolean> =>
 
 export const completeOnboarding = (): Promise<void> =>
   window.electron.completeOnboarding()
+
+// CSV
+export const exportPatientsCsv = (): Promise<string> =>
+  window.electron.exportPatientsCsv()
+
+export const importPatientsCsv = (csvContent: string): Promise<CsvImportResult> =>
+  window.electron.importPatientsCsv(csvContent)
+
+// Revenue
+export const getRevenueStats = (): Promise<RevenueStats> =>
+  window.electron.getRevenueStats()
+
+// Tooth notes
+export const getToothNote = (patientId: number, toothFdi: number): Promise<string> =>
+  window.electron.getToothNote(patientId, toothFdi)
+
+export const setToothNote = (
+  patientId: number,
+  toothFdi: number,
+  notes: string
+): Promise<string> => window.electron.setToothNote(patientId, toothFdi, notes)

@@ -1,9 +1,10 @@
 import { ipcMain } from 'electron'
 import { getDb } from '../db/connection'
-import { listTreatmentsForPatient, listTreatmentsForTooth, addTreatment } from '../models/treatment'
+import { listTreatmentsForPatient, listTreatmentsForTooth, addTreatment, updateTreatmentNotes } from '../models/treatment'
 import type {
   Treatment,
   AddTreatmentRequest,
+  UpdateTreatmentNotesRequest,
   ToothSurface,
   ToothCondition,
   TreatmentStatus
@@ -112,6 +113,35 @@ function validateAddTreatmentRequest(data: unknown): AddTreatmentRequest {
   }
 }
 
+function validateUpdateTreatmentNotesRequest(data: unknown): UpdateTreatmentNotesRequest {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Invalid data: expected an object')
+  }
+  const d = data as Record<string, unknown>
+
+  if (typeof d.id !== 'number' || !Number.isInteger(d.id) || d.id <= 0) {
+    throw new Error('Invalid data: id must be a positive integer')
+  }
+
+  if (d.notes !== null && d.notes !== undefined && typeof d.notes !== 'string') {
+    throw new Error('Invalid data: notes must be a string or null')
+  }
+
+  let price: number | null = null
+  if (d.price !== null && d.price !== undefined) {
+    if (typeof d.price !== 'number' || !isFinite(d.price) || d.price < 0) {
+      throw new Error('Invalid data: price must be a non-negative finite number or null')
+    }
+    price = d.price
+  }
+
+  return {
+    id: d.id,
+    notes: typeof d.notes === 'string' ? d.notes : null,
+    price
+  }
+}
+
 export function registerTreatmentHandlers(): void {
   ipcMain.handle(
     'treatments:listForTooth',
@@ -126,5 +156,9 @@ export function registerTreatmentHandlers(): void {
 
   ipcMain.handle('treatments:add', (_event, data: unknown): Treatment => {
     return addTreatment(getDb(), validateAddTreatmentRequest(data))
+  })
+
+  ipcMain.handle('treatments:updateNotes', (_event, data: unknown): Treatment => {
+    return updateTreatmentNotes(getDb(), validateUpdateTreatmentNotesRequest(data))
   })
 }

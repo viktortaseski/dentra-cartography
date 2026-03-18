@@ -11,6 +11,8 @@ interface SidebarProps {
   onNewPatient: () => void
   onOpenSettings: () => void
   onOpenCalendar: () => void
+  onOpenRevenue: () => void
+  onRefresh: () => void
 }
 
 export function Sidebar({
@@ -21,6 +23,8 @@ export function Sidebar({
   onNewPatient,
   onOpenSettings,
   onOpenCalendar,
+  onOpenRevenue,
+  onRefresh,
 }: SidebarProps): JSX.Element {
   const t = useTranslation()
   const [query, setQuery] = useState('')
@@ -42,7 +46,30 @@ export function Sidebar({
     >
       {/* Sidebar header */}
       <div className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-700">
-        <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Patients</h1>
+        <div className="flex items-center justify-between mb-3">
+          <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Patients</h1>
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={isLoading}
+            className="p-1 rounded text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-40"
+            aria-label="Refresh patient list"
+            title="Refresh"
+          >
+            <svg
+              className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`}
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v4a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
+        </div>
         <div className="relative">
           <svg
             className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500 pointer-events-none"
@@ -73,7 +100,7 @@ export function Sidebar({
           <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-8">{t.loading}</p>
         ) : filtered.length === 0 ? (
           <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-8">
-            {query.trim() ? 'No patients match your search.' : t.noPatients}
+            {query.trim() ? t.noPatientsMatch : t.noPatients}
           </p>
         ) : (
           filtered.map((patient) => (
@@ -118,6 +145,23 @@ export function Sidebar({
             />
           </svg>
           {t.calendar}
+        </button>
+
+        {/* Revenue link */}
+        <button
+          type="button"
+          onClick={onOpenRevenue}
+          className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          aria-label="Open revenue"
+        >
+          <svg className="w-4 h-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path
+              fillRule="evenodd"
+              d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm0 2h12v8H4V6zm6 1a1 1 0 00-1 1v.101A2.5 2.5 0 007.5 10.5a1 1 0 002 0A.5.5 0 0110 10a.5.5 0 110 1 2.5 2.5 0 00-.5 4.95V16a1 1 0 002 0v-.05A2.5 2.5 0 0012.5 11.5a1 1 0 00-2 0 .5.5 0 01-.5.5.5.5 0 110-1 2.5 2.5 0 00.5-4.95V8a1 1 0 00-1-1z"
+              clipRule="evenodd"
+            />
+          </svg>
+          {t.revenue}
         </button>
 
         {/* Settings link */}

@@ -5,6 +5,8 @@ import { registerClinicSettingsHandlers } from './clinicSettings'
 import { registerAppointmentHandlers } from './appointments'
 import { registerLicenseHandlers } from './license'
 import { registerOnboardingHandlers } from './onboarding'
+import { registerCsvHandlers } from './csv'
+import { registerRevenueHandlers } from './revenue'
 
 export function registerIpcHandlers(): void {
   registerPatientHandlers()
@@ -14,4 +16,6 @@ export function registerIpcHandlers(): void {
   registerAppointmentHandlers()
   registerLicenseHandlers()
   registerOnboardingHandlers()
+  registerCsvHandlers()
+  registerRevenueHandlers()
 }

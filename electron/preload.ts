@@ -12,6 +12,8 @@ const api: ElectronAPI = {
   // Teeth / Chart
   getChartForPatient: (patientId) => ipcRenderer.invoke('teeth:getChart', patientId),
   setToothCondition: (data) => ipcRenderer.invoke('teeth:setCondition', data),
+  getToothNote: (patientId, toothFdi) => ipcRenderer.invoke('teeth:getToothNote', patientId, toothFdi),
+  setToothNote: (patientId, toothFdi, notes) => ipcRenderer.invoke('teeth:setToothNote', patientId, toothFdi, notes),
 
   // Treatments
   listTreatmentsForTooth: (patientId, toothId) =>
@@ -19,6 +21,7 @@ const api: ElectronAPI = {
   listTreatmentsForPatient: (patientId) =>
     ipcRenderer.invoke('treatments:listForPatient', patientId),
   addTreatment: (data) => ipcRenderer.invoke('treatments:add', data),
+  updateTreatmentNotes: (data) => ipcRenderer.invoke('treatments:updateNotes', data),
 
   // Clinic settings
   getClinicSettings: () => ipcRenderer.invoke('clinic:getSettings'),
@@ -48,6 +51,13 @@ const api: ElectronAPI = {
   // Onboarding
   getOnboardingStatus: (): Promise<boolean> => ipcRenderer.invoke('onboarding:getStatus'),
   completeOnboarding: (): Promise<void> => ipcRenderer.invoke('onboarding:complete'),
+
+  // CSV
+  exportPatientsCsv: () => ipcRenderer.invoke('patients:exportCsv'),
+  importPatientsCsv: (csvContent: string) => ipcRenderer.invoke('patients:importCsv', csvContent),
+
+  // Revenue
+  getRevenueStats: () => ipcRenderer.invoke('revenue:getStats'),
 }
 
 contextBridge.exposeInMainWorld('electron', api)

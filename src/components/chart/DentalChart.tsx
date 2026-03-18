@@ -115,16 +115,33 @@ export function DentalChart({ patientId }: DentalChartProps): JSX.Element {
     useChartStore()
 
   // Zoom / pan state
-  const [scale, setScale] = useState(1)
+  const DEFAULT_SCALE = 0.75
+  const [scale, setScale] = useState(DEFAULT_SCALE)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const [cursor, setCursor] = useState<'grab' | 'grabbing'>('grab')
   const isPanning = useRef(false)
   const panStart = useRef({ mx: 0, my: 0, ox: 0, oy: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  function computeCenteredOffset(s: number): { x: number; y: number } {
+    const container = containerRef.current
+    const content = contentRef.current
+    if (!container || !content) return { x: 0, y: 0 }
+    return {
+      x: (container.clientWidth - content.scrollWidth * s) / 2,
+      y: (container.clientHeight - content.scrollHeight * s) / 2,
+    }
+  }
 
   useEffect(() => {
     void loadChart(patientId)
   }, [patientId, loadChart])
+
+  // Center chart at default scale after first render
+  useEffect(() => {
+    setOffset(computeCenteredOffset(DEFAULT_SCALE))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Non-passive wheel listener for zoom-to-cursor
   useEffect(() => {
@@ -185,6 +202,7 @@ export function DentalChart({ patientId }: DentalChartProps): JSX.Element {
     >
       {/* Zoomable / pannable content */}
       <div
+        ref={contentRef}
         style={{
           transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
           transformOrigin: '0 0',
@@ -291,7 +309,7 @@ export function DentalChart({ patientId }: DentalChartProps): JSX.Element {
         </button>
         <button
           className={ZOOM_BUTTON_CLASS}
-          onClick={() => { setScale(1); setOffset({ x: 0, y: 0 }) }}
+          onClick={() => { setScale(DEFAULT_SCALE); setOffset(computeCenteredOffset(DEFAULT_SCALE)) }}
           aria-label="Reset zoom"
         >
           ⌂

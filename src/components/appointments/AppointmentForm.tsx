@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ChangeEvent } from 'react'
+import { useState, useRef, useEffect, type FormEvent, type ChangeEvent, type KeyboardEvent } from 'react'
 import type {
   AppointmentStatus,
   CreateAppointmentRequest,
@@ -67,6 +67,63 @@ export function AppointmentForm({
   )
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [validationError, setValidationError] = useState<string | null>(null)
+
+  // Combobox state for patient search
+  const initialPatientName = appointment
+    ? (patients.find((p) => p.id === appointment.patientId)?.fullName ?? '')
+    : ''
+  const [patientQuery, setPatientQuery] = useState(initialPatientName)
+  const [comboOpen, setComboOpen] = useState(false)
+  const [highlightedIdx, setHighlightedIdx] = useState(0)
+  const comboRef = useRef<HTMLDivElement>(null)
+
+  const filteredPatients = patientQuery.trim()
+    ? patients.filter((p) =>
+        p.fullName.toLowerCase().includes(patientQuery.trim().toLowerCase())
+      )
+    : patients
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function onOutside(e: MouseEvent): void {
+      if (comboRef.current && !comboRef.current.contains(e.target as Node)) {
+        setComboOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onOutside)
+    return () => document.removeEventListener('mousedown', onOutside)
+  }, [])
+
+  function selectPatient(id: number, name: string): void {
+    setFields((prev) => ({ ...prev, patientId: String(id) }))
+    setPatientQuery(name)
+    setComboOpen(false)
+    setHighlightedIdx(0)
+  }
+
+  function handlePatientQueryChange(e: ChangeEvent<HTMLInputElement>): void {
+    setPatientQuery(e.target.value)
+    setFields((prev) => ({ ...prev, patientId: '' }))
+    setComboOpen(true)
+    setHighlightedIdx(0)
+  }
+
+  function handlePatientKeyDown(e: KeyboardEvent<HTMLInputElement>): void {
+    if (!comboOpen) { setComboOpen(true); return }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setHighlightedIdx((i) => Math.min(i + 1, filteredPatients.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setHighlightedIdx((i) => Math.max(i - 1, 0))
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      const p = filteredPatients[highlightedIdx]
+      if (p) selectPatient(p.id, p.fullName)
+    } else if (e.key === 'Escape') {
+      setComboOpen(false)
+    }
+  }
 
   function handleChange(
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -181,26 +238,56 @@ export function AppointmentForm({
               </p>
             )}
 
-            {/* Patient selector */}
+            {/* Patient combobox */}
             <div>
               <label htmlFor="af-patient" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {t.patient} <span className="text-red-500">*</span>
               </label>
-              <select
-                id="af-patient"
-                name="patientId"
-                value={fields.patientId}
-                onChange={handleChange}
-                required
-                className={inputClass}
-              >
-                <option value="">{t.selectPatientLabel}…</option>
-                {patients.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.fullName}
-                  </option>
-                ))}
-              </select>
+              <div ref={comboRef} className="relative">
+                <input
+                  id="af-patient"
+                  type="text"
+                  autoComplete="off"
+                  value={patientQuery}
+                  onChange={handlePatientQueryChange}
+                  onFocus={() => setComboOpen(true)}
+                  onKeyDown={handlePatientKeyDown}
+                  placeholder={`${t.selectPatientLabel}…`}
+                  className={inputClass}
+                  aria-autocomplete="list"
+                  aria-expanded={comboOpen}
+                  aria-haspopup="listbox"
+                  role="combobox"
+                />
+                {comboOpen && filteredPatients.length > 0 && (
+                  <ul
+                    role="listbox"
+                    className="absolute z-50 w-full mt-1 max-h-52 overflow-y-auto bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg py-1"
+                  >
+                    {filteredPatients.map((p, idx) => (
+                      <li
+                        key={p.id}
+                        role="option"
+                        aria-selected={String(p.id) === fields.patientId}
+                        onMouseDown={() => selectPatient(p.id, p.fullName)}
+                        onMouseEnter={() => setHighlightedIdx(idx)}
+                        className={`px-3 py-2 text-sm cursor-pointer ${
+                          idx === highlightedIdx
+                            ? 'bg-blue-600 text-white'
+                            : 'text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-600'
+                        }`}
+                      >
+                        {p.fullName}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {comboOpen && patientQuery.trim() && filteredPatients.length === 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg px-3 py-2 text-sm text-gray-400 dark:text-gray-500">
+                    {t.noPatientsMatch}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Title */}

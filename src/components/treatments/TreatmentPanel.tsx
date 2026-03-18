@@ -4,6 +4,7 @@ import { useChartStore } from '@/store/chartStore'
 import { TreatmentRow } from './TreatmentRow'
 import { TreatmentForm } from './TreatmentForm'
 import { useTranslation } from '@/lib/i18n'
+import { updateTreatmentNotes } from '@/lib/ipc'
 import type { ToothSurface, ToothCondition } from '@shared/types'
 
 interface TreatmentPanelProps {
@@ -14,7 +15,7 @@ interface TreatmentPanelProps {
 export function TreatmentPanel({ patientId, selectedToothFdi }: TreatmentPanelProps): JSX.Element {
   const t = useTranslation()
   const { treatments, isLoading, error, loadTreatmentsForPatient } = useTreatmentStore()
-  const { selectedSurface, getCondition } = useChartStore()
+  const { selectedSurface, getCondition, loadChart } = useChartStore()
 
   const [formOpen, setFormOpen] = useState(false)
   const [panelHeight, setPanelHeight] = useState(192)
@@ -61,6 +62,16 @@ export function TreatmentPanel({ patientId, selectedToothFdi }: TreatmentPanelPr
   function handleSaved(): void {
     setFormOpen(false)
     void loadTreatmentsForPatient(patientId)
+    void loadChart(patientId)
+  }
+
+  async function handleEditNotes(
+    id: number,
+    notes: string | null,
+    price: number | null
+  ): Promise<void> {
+    await updateTreatmentNotes({ id, notes, price })
+    await loadTreatmentsForPatient(patientId)
   }
 
   return (
@@ -174,7 +185,7 @@ export function TreatmentPanel({ patientId, selectedToothFdi }: TreatmentPanelPr
           <div role="list" aria-label="Treatment history">
             {displayedTreatments.map((treatment) => (
               <div key={treatment.id} role="listitem">
-                <TreatmentRow treatment={treatment} />
+                <TreatmentRow treatment={treatment} onEditNotes={handleEditNotes} />
               </div>
             ))}
           </div>

@@ -85,11 +85,11 @@ export function WeekView({
               </span>
             </button>
 
-            {/* Appointment blocks + empty area */}
-            <button
-              type="button"
+            {/* Appointment blocks + empty area click target */}
+            <div
               onClick={() => onEmptyDayClick(iso)}
-              className="flex-1 p-1.5 text-left cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors focus:outline-none"
+              className="flex-1 p-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              role="button"
               aria-label={`Add appointment on ${iso}`}
               tabIndex={-1}
             >
@@ -98,12 +98,10 @@ export function WeekView({
                   key={appt.id}
                   appointment={appt}
                   patientName={patientMap.get(appt.patientId) ?? 'Unknown'}
-                  onClick={(a) => {
-                    onAppointmentClick(a)
-                  }}
+                  onClick={(a) => onAppointmentClick(a)}
                 />
               ))}
-            </button>
+            </div>
           </div>
         )
       })}

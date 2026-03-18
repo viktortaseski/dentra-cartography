@@ -1,10 +1,11 @@
-import { useState, useEffect, type FormEvent, type ChangeEvent } from 'react'
-import type { ClinicSettings } from '@shared/types'
-import { getClinicSettings, updateClinicSettings } from '@/lib/ipc'
+import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'react'
+import type { ClinicSettings, CsvImportResult } from '@shared/types'
+import { getClinicSettings, updateClinicSettings, exportPatientsCsv, importPatientsCsv } from '@/lib/ipc'
 import { useUIStore } from '@/store/uiStore'
 import { useTranslation } from '@/lib/i18n'
+import { usePatientStore } from '@/store/patientStore'
 
-type Tab = 'clinic' | 'appearance'
+type Tab = 'clinic' | 'appearance' | 'data'
 
 const EMPTY_SETTINGS: ClinicSettings = {
   clinicName: '',
@@ -17,7 +18,8 @@ const EMPTY_SETTINGS: ClinicSettings = {
 
 export function Settings(): JSX.Element {
   const t = useTranslation()
-  const { theme, language, setTheme, setLanguage } = useUIStore()
+  const { theme, language, setTheme, setLanguage, fontSize, setFontSize } = useUIStore()
+  const loadPatients = usePatientStore((s) => s.loadPatients)
 
   const [activeTab, setActiveTab] = useState<Tab>('clinic')
   const [fields, setFields] = useState<ClinicSettings>(EMPTY_SETTINGS)
@@ -25,6 +27,13 @@ export function Settings(): JSX.Element {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isExporting, setIsExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
+  const [isImporting, setIsImporting] = useState(false)
+  const [importError, setImportError] = useState<string | null>(null)
+  const [importResult, setImportResult] = useState<CsvImportResult | null>(null)
 
   useEffect(() => {
     async function load(): Promise<void> {
@@ -70,6 +79,46 @@ export function Settings(): JSX.Element {
     }
   }
 
+  async function handleExport(): Promise<void> {
+    setIsExporting(true)
+    setExportError(null)
+    try {
+      const csv = await exportPatientsCsv()
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const dateStr = new Date().toISOString().split('T')[0]
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `patients-export-${dateStr}.csv`
+      anchor.click()
+      setTimeout(() => URL.revokeObjectURL(url), 10_000)
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : 'Export failed')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  async function handleImportFileChange(e: React.ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setIsImporting(true)
+    setImportError(null)
+    setImportResult(null)
+    try {
+      const text = await file.text()
+      const result = await importPatientsCsv(text)
+      setImportResult(result)
+      if (result.errors.length > 0) console.error('CSV import errors:', result.errors)
+      if (result.patientsCreated > 0) await loadPatients()
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Import failed')
+    } finally {
+      setIsImporting(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
   const inputClass =
     'w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
 
@@ -101,6 +150,13 @@ export function Settings(): JSX.Element {
             className={tabClass('appearance')}
           >
             {t.appearance}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('data')}
+            className={tabClass('data')}
+          >
+            Data
           </button>
         </div>
 
@@ -257,6 +313,73 @@ export function Settings(): JSX.Element {
           </>
         )}
 
+        {/* Data tab */}
+        {activeTab === 'data' && (
+          <div className="space-y-6 max-w-lg">
+            {/* Export card */}
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Export Patients</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                Download all patients and their treatment history as a CSV file.
+              </p>
+              <button
+                type="button"
+                onClick={handleExport}
+                disabled={isExporting}
+                className="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              >
+                {isExporting ? 'Exporting\u2026' : 'Export CSV'}
+              </button>
+              {exportError && <p className="text-xs text-red-600 mt-2">{exportError}</p>}
+            </div>
+
+            {/* Import card */}
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Import Patients</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                Import patients and treatments from a CSV file. Existing patients (matched by name + date of birth) will be skipped.
+              </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={handleImportFileChange}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isImporting}
+                className="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              >
+                {isImporting ? 'Importing\u2026' : 'Import CSV'}
+              </button>
+              {importResult && (
+                <div className="mt-3 text-xs space-y-1">
+                  <p className="text-green-600 dark:text-green-400">
+                    {importResult.patientsCreated} patients created · {importResult.treatmentsAdded} treatments added
+                  </p>
+                  {importResult.patientsSkipped > 0 && (
+                    <p className="text-gray-500">{importResult.patientsSkipped} patients already existed (skipped)</p>
+                  )}
+                  {importResult.errors.length > 0 && (
+                    <p className="text-red-600">{importResult.errors.length} errors — check console</p>
+                  )}
+                </div>
+              )}
+              {importError && <p className="text-xs text-red-600 mt-2">{importError}</p>}
+            </div>
+
+            {/* CSV format reference */}
+            <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
+              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">CSV Column Order</h3>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 font-mono leading-relaxed break-all">
+                full_name, date_of_birth, sex, phone, email, address, insurance_provider, insurance_policy, medical_alerts, notes, tooth_fdi, surface, condition_type, treatment_status, date_performed, performed_by, treatment_notes, price
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Appearance tab */}
         {activeTab === 'appearance' && (
           <div className="space-y-8">
@@ -367,6 +490,38 @@ export function Settings(): JSX.Element {
                       )}
                     </span>
                     {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Font Size */}
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                {t.fontSize}
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                {t.fontSizeDesc}
+              </p>
+              <div className="flex gap-3">
+                {([
+                  { value: 'normal', label: t.fontSizeNormal, desc: t.fontSizeNormalDesc },
+                  { value: 'large',  label: t.fontSizeLarge,  desc: t.fontSizeLargeDesc },
+                ] as const).map(({ value, label, desc }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setFontSize(value)}
+                    className={[
+                      'flex-1 flex flex-col items-center gap-1 px-4 py-3 rounded-lg border text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+                      fontSize === value
+                        ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                        : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700',
+                    ].join(' ')}
+                    aria-pressed={fontSize === value}
+                  >
+                    <span className={value === 'large' ? 'text-base font-semibold' : 'text-sm'}>{label}</span>
+                    <span className="text-xs font-normal text-gray-400 dark:text-gray-500">{desc}</span>
                   </button>
                 ))}
               </div>

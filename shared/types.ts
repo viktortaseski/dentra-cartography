@@ -75,6 +75,12 @@ export interface Treatment {
 
 export type AddTreatmentRequest = Omit<Treatment, 'id' | 'createdAt'>
 
+export interface UpdateTreatmentNotesRequest {
+  id: number
+  notes: string | null
+  price: number | null
+}
+
 // ── Clinic Settings ──────────────────────────────────────────────────────────
 
 export interface ClinicSettings {
@@ -106,6 +112,37 @@ export interface Appointment {
 export type CreateAppointmentRequest = Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>
 export type UpdateAppointmentRequest = Partial<CreateAppointmentRequest>
 
+// ── Revenue ───────────────────────────────────────────────────────────────────
+
+export interface RevenueTransaction {
+  treatmentId: number
+  patientId: number
+  patientName: string
+  conditionType: string
+  toothFdi: number
+  surface: string | null
+  status: string          // 'planned' | 'completed' | 'referred'
+  datePerformed: string   // YYYY-MM-DD
+  price: number
+}
+
+export interface RevenueStats {
+  totalEarned: number           // sum of price where status = 'completed'
+  totalOutstanding: number      // sum of price where status = 'planned'
+  earnedThisMonth: number       // completed this calendar month (YYYY-MM)
+  outstandingThisMonth: number  // planned this calendar month
+  transactions: RevenueTransaction[]  // all treatments with price > 0, newest first
+}
+
+// ── CSV Import/Export ─────────────────────────────────────────────────────────
+
+export interface CsvImportResult {
+  patientsCreated: number
+  patientsSkipped: number
+  treatmentsAdded: number
+  errors: string[]
+}
+
 // ── License ───────────────────────────────────────────────────────────────────
 
 export interface LicenseStatus {
@@ -113,6 +150,7 @@ export interface LicenseStatus {
   licensee?: string
   email?: string | null
   expiresAt?: string | null
+  error?: string
 }
 
 export interface ActivateResult {
@@ -142,10 +180,13 @@ export interface ElectronAPI {
 
   getChartForPatient: (patientId: number) => Promise<ToothChartEntry[]>
   setToothCondition: (data: SetToothConditionRequest) => Promise<void>
+  getToothNote: (patientId: number, toothFdi: number) => Promise<string>
+  setToothNote: (patientId: number, toothFdi: number, notes: string) => Promise<string>
 
   listTreatmentsForTooth: (patientId: number, toothFdi: number) => Promise<Treatment[]>
   listTreatmentsForPatient: (patientId: number) => Promise<Treatment[]>
   addTreatment: (data: AddTreatmentRequest) => Promise<Treatment>
+  updateTreatmentNotes: (data: UpdateTreatmentNotesRequest) => Promise<Treatment>
 
   // Clinic settings
   getClinicSettings: () => Promise<ClinicSettings>
@@ -169,6 +210,13 @@ export interface ElectronAPI {
   // Onboarding
   getOnboardingStatus: () => Promise<boolean>
   completeOnboarding: () => Promise<void>
+
+  // CSV
+  exportPatientsCsv: () => Promise<string>
+  importPatientsCsv: (csv: string) => Promise<CsvImportResult>
+
+  // Revenue
+  getRevenueStats: () => Promise<RevenueStats>
 }
 
 declare global {

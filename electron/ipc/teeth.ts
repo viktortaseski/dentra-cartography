@@ -74,6 +74,20 @@ function validateSetConditionRequest(data: unknown): SetToothConditionRequest {
   }
 }
 
+function validateToothFdi(toothFdi: unknown): number {
+  if (typeof toothFdi !== 'number' || !Number.isInteger(toothFdi) || !isValidFdiNumber(toothFdi)) {
+    throw new Error('Invalid toothFdi: must be a valid FDI tooth number')
+  }
+  return toothFdi
+}
+
+function validateNotes(notes: unknown): string {
+  if (typeof notes !== 'string') {
+    throw new Error('Invalid notes: must be a string')
+  }
+  return notes.trim()
+}
+
 export function registerTeethHandlers(): void {
   ipcMain.handle('teeth:getChart', (_event, patientId: unknown): ToothChartEntry[] => {
     return getChartForPatient(getDb(), validatePatientId(patientId))
@@ -82,4 +96,31 @@ export function registerTeethHandlers(): void {
   ipcMain.handle('teeth:setCondition', (_event, data: unknown): void => {
     setToothCondition(getDb(), validateSetConditionRequest(data))
   })
+
+  ipcMain.handle('teeth:getToothNote', (_event, patientId: unknown, toothFdi: unknown): string => {
+    const pid = validatePatientId(patientId)
+    const fdi = validateToothFdi(toothFdi)
+    const db = getDb()
+    const row = db.prepare(
+      'SELECT notes FROM tooth_notes WHERE patient_id = ? AND tooth_fdi = ?'
+    ).get(pid, fdi) as { notes: string } | undefined
+    return row ? row.notes : ''
+  })
+
+  ipcMain.handle(
+    'teeth:setToothNote',
+    (_event, patientId: unknown, toothFdi: unknown, notes: unknown): string => {
+      const pid = validatePatientId(patientId)
+      const fdi = validateToothFdi(toothFdi)
+      const trimmedNotes = validateNotes(notes)
+      const db = getDb()
+      db.prepare(
+        `INSERT INTO tooth_notes (patient_id, tooth_fdi, notes, updated_at)
+         VALUES (?, ?, ?, datetime('now'))
+         ON CONFLICT(patient_id, tooth_fdi)
+         DO UPDATE SET notes = excluded.notes, updated_at = excluded.updated_at`
+      ).run(pid, fdi, trimmedNotes)
+      return trimmedNotes
+    }
+  )
 }

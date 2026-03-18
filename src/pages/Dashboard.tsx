@@ -10,6 +10,7 @@ import { TreatmentPanel } from '@/components/treatments'
 import { ChartView } from '@/pages/ChartView'
 import { Settings } from '@/pages/Settings'
 import { CalendarView } from '@/pages/CalendarView'
+import { RevenueView } from '@/pages/RevenueView'
 import { useTranslation } from '@/lib/i18n'
 import { UpdateBanner } from '@/components/UpdateBanner'
 import type { Patient } from '@/types'
@@ -19,7 +20,7 @@ type ModalState =
   | { kind: 'create' }
   | { kind: 'edit'; patient: Patient }
 
-type ActiveView = 'chart' | 'settings' | 'calendar'
+type ActiveView = 'chart' | 'settings' | 'calendar' | 'revenue'
 
 export function Dashboard(): JSX.Element {
   const t = useTranslation()
@@ -68,6 +69,10 @@ export function Dashboard(): JSX.Element {
     setActiveView('calendar')
   }
 
+  function handleOpenRevenue(): void {
+    setActiveView('revenue')
+  }
+
   function handleSelectPatient(id: number): void {
     selectPatient(id)
     setActiveView('chart')
@@ -78,9 +83,11 @@ export function Dashboard(): JSX.Element {
       ? t.settingsTitle
       : activeView === 'calendar'
       ? t.calendar
+      : activeView === 'revenue'
+      ? 'Revenue'
       : undefined
 
-  // When in chart view with no patient, show no patient in TopBar title
+  // Only show patient in TopBar when in chart view
   const topBarPatient = activeView === 'chart' ? selectedPatient : null
 
   return (
@@ -95,6 +102,8 @@ export function Dashboard(): JSX.Element {
         onNewPatient={handleNewPatient}
         onOpenSettings={handleOpenSettings}
         onOpenCalendar={handleOpenCalendar}
+        onOpenRevenue={handleOpenRevenue}
+        onRefresh={loadPatients}
       />
 
       {/* Right main area */}
@@ -108,6 +117,8 @@ export function Dashboard(): JSX.Element {
           {activeView === 'settings' && <Settings />}
 
           {activeView === 'calendar' && <CalendarView />}
+
+          {activeView === 'revenue' && <RevenueView />}
 
           {activeView === 'chart' && (
             <>

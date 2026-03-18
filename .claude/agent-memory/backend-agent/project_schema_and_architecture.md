@@ -21,16 +21,21 @@ type: project
   - Indexes: `idx_appointments_date(date)`, `idx_appointments_patient(patient_id)`
   - Valid statuses: `'scheduled' | 'completed' | 'cancelled' | 'no_show'`
 
-Current migration version: 2.
+### Migration 004 (`004_tooth_notes.sql`)
+
+- `tooth_notes(id, patient_id FK CASCADE, tooth_fdi INTEGER NOT NULL, notes TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL, UNIQUE(patient_id, tooth_fdi))` — one free-text note per tooth per patient, upserted; separate from both `tooth_conditions` and `treatments`
+
+Current migration version: 4.
 
 ## IPC Channel Names (must match preload)
 
 - `patients:list`, `patients:get`, `patients:create`, `patients:update`, `patients:archive`
-- `teeth:getChart`, `teeth:setCondition`
+- `teeth:getChart`, `teeth:setCondition`, `teeth:getToothNote`, `teeth:setToothNote`
 - `treatments:listForTooth`, `treatments:listForPatient`, `treatments:add`
 - `clinic:getSettings`, `clinic:updateSettings`
 - `appointments:list`, `appointments:listForPatient`, `appointments:create`, `appointments:update`, `appointments:delete`
 - `updater:status` (push-only, sent via `win.webContents.send`), `updater:quitAndInstall` (invoke)
+- `patients:exportCsv` (invoke → string), `patients:importCsv` (invoke, arg: csvContent string → CsvImportResult)
 
 ## Auto-Update (`electron/ipc/updater.ts`)
 
@@ -52,6 +57,7 @@ Current migration version: 2.
 - `ClinicSettings` — camelCase keys; model maps them to/from snake_case DB keys via `toDbKey()`
 - `Appointment` — camelCase in TypeScript; DB uses `patient_id`, `start_time`, `end_time`, `created_at`, `updated_at`
 - `AppointmentStatus = 'scheduled' | 'completed' | 'cancelled' | 'no_show'`
+- `CsvImportResult = { patientsCreated, patientsSkipped, treatmentsAdded, errors: string[] }`
 
 ## New Model Files (migration 002)
 

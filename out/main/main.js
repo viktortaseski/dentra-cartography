@@ -12,7 +12,9 @@ function getDb() {
   return db;
 }
 function initDatabase() {
-  const dbPath = path.join(electron.app.getPath("userData"), "dental.db");
+  const userDataPath = electron.app.getPath("userData");
+  fs.mkdirSync(userDataPath, { recursive: true });
+  const dbPath = path.join(userDataPath, "dental.db");
   db = new Database(dbPath);
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
@@ -301,6 +303,18 @@ function validateSetConditionRequest(data) {
     condition: d.condition
   };
 }
+function validateToothFdi$1(toothFdi) {
+  if (typeof toothFdi !== "number" || !Number.isInteger(toothFdi) || !isValidFdiNumber$1(toothFdi)) {
+    throw new Error("Invalid toothFdi: must be a valid FDI tooth number");
+  }
+  return toothFdi;
+}
+function validateNotes(notes) {
+  if (typeof notes !== "string") {
+    throw new Error("Invalid notes: must be a string");
+  }
+  return notes.trim();
+}
 function registerTeethHandlers() {
   electron.ipcMain.handle("teeth:getChart", (_event, patientId) => {
     return getChartForPatient(getDb(), validatePatientId$1(patientId));
@@ -308,6 +322,31 @@ function registerTeethHandlers() {
   electron.ipcMain.handle("teeth:setCondition", (_event, data) => {
     setToothCondition(getDb(), validateSetConditionRequest(data));
   });
+  electron.ipcMain.handle("teeth:getToothNote", (_event, patientId, toothFdi) => {
+    const pid = validatePatientId$1(patientId);
+    const fdi = validateToothFdi$1(toothFdi);
+    const db2 = getDb();
+    const row = db2.prepare(
+      "SELECT notes FROM tooth_notes WHERE patient_id = ? AND tooth_fdi = ?"
+    ).get(pid, fdi);
+    return row ? row.notes : "";
+  });
+  electron.ipcMain.handle(
+    "teeth:setToothNote",
+    (_event, patientId, toothFdi, notes) => {
+      const pid = validatePatientId$1(patientId);
+      const fdi = validateToothFdi$1(toothFdi);
+      const trimmedNotes = validateNotes(notes);
+      const db2 = getDb();
+      db2.prepare(
+        `INSERT INTO tooth_notes (patient_id, tooth_fdi, notes, updated_at)
+         VALUES (?, ?, ?, datetime('now'))
+         ON CONFLICT(patient_id, tooth_fdi)
+         DO UPDATE SET notes = excluded.notes, updated_at = excluded.updated_at`
+      ).run(pid, fdi, trimmedNotes);
+      return trimmedNotes;
+    }
+  );
 }
 const SELECT_TREATMENT = `
   SELECT
@@ -333,24 +372,48 @@ function listTreatmentsForTooth(db2, patientId, toothFdi) {
   ).all(patientId, toothFdi);
 }
 function addTreatment(db2, data) {
-  const result = db2.prepare(
+  const insertTreatment = db2.prepare(
     `INSERT INTO treatments
-        (patient_id, tooth_fdi, surface, condition_type, status, date_performed, performed_by, notes, price)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(
-    data.patientId,
-    data.toothFdi,
-    data.surface ?? null,
-    data.conditionType,
-    data.status,
-    data.datePerformed,
-    data.performedBy ?? null,
-    data.notes ?? null,
-    data.price ?? null
+      (patient_id, tooth_fdi, surface, condition_type, status, date_performed, performed_by, notes, price)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
-  const treatment = db2.prepare(`${SELECT_TREATMENT} WHERE id = ?`).get(result.lastInsertRowid);
+  const upsertCondition = db2.prepare(
+    `INSERT INTO tooth_conditions (patient_id, tooth_fdi, surface, condition)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(patient_id, tooth_fdi, surface) DO UPDATE SET condition = excluded.condition`
+  );
+  let treatment;
+  db2.transaction(() => {
+    const result = insertTreatment.run(
+      data.patientId,
+      data.toothFdi,
+      data.surface ?? null,
+      data.conditionType,
+      data.status,
+      data.datePerformed,
+      data.performedBy ?? null,
+      data.notes ?? null,
+      data.price ?? null
+    );
+    treatment = db2.prepare(`${SELECT_TREATMENT} WHERE id = ?`).get(result.lastInsertRowid);
+    if (!treatment) {
+      throw new Error(`Failed to retrieve treatment after insert (rowid ${result.lastInsertRowid})`);
+    }
+    const conditionSurface = data.surface ?? "occlusal";
+    upsertCondition.run(data.patientId, data.toothFdi, conditionSurface, data.conditionType);
+  })();
+  return treatment;
+}
+function updateTreatmentNotes(db2, data) {
+  const result = db2.prepare(
+    `UPDATE treatments SET notes = ?, price = ? WHERE id = ? AND status = 'planned'`
+  ).run(data.notes ?? null, data.price ?? null, data.id);
+  if (result.changes === 0) {
+    throw new Error("Treatment not found or not editable");
+  }
+  const treatment = db2.prepare(`${SELECT_TREATMENT} WHERE id = ?`).get(data.id);
   if (!treatment) {
-    throw new Error(`Failed to retrieve treatment after insert (rowid ${result.lastInsertRowid})`);
+    throw new Error(`Failed to retrieve treatment after update (id ${data.id})`);
   }
   return treatment;
 }
@@ -446,6 +509,30 @@ function validateAddTreatmentRequest(data) {
     price
   };
 }
+function validateUpdateTreatmentNotesRequest(data) {
+  if (!data || typeof data !== "object") {
+    throw new Error("Invalid data: expected an object");
+  }
+  const d = data;
+  if (typeof d.id !== "number" || !Number.isInteger(d.id) || d.id <= 0) {
+    throw new Error("Invalid data: id must be a positive integer");
+  }
+  if (d.notes !== null && d.notes !== void 0 && typeof d.notes !== "string") {
+    throw new Error("Invalid data: notes must be a string or null");
+  }
+  let price = null;
+  if (d.price !== null && d.price !== void 0) {
+    if (typeof d.price !== "number" || !isFinite(d.price) || d.price < 0) {
+      throw new Error("Invalid data: price must be a non-negative finite number or null");
+    }
+    price = d.price;
+  }
+  return {
+    id: d.id,
+    notes: typeof d.notes === "string" ? d.notes : null,
+    price
+  };
+}
 function registerTreatmentHandlers() {
   electron.ipcMain.handle(
     "treatments:listForTooth",
@@ -458,6 +545,9 @@ function registerTreatmentHandlers() {
   });
   electron.ipcMain.handle("treatments:add", (_event, data) => {
     return addTreatment(getDb(), validateAddTreatmentRequest(data));
+  });
+  electron.ipcMain.handle("treatments:updateNotes", (_event, data) => {
+    return updateTreatmentNotes(getDb(), validateUpdateTreatmentNotesRequest(data));
   });
 }
 const KEYS = [
@@ -865,6 +955,326 @@ function registerOnboardingHandlers() {
     db2.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('onboarding_completed', '1')").run();
   });
 }
+function escapeCsvField(value) {
+  if (value === null || value === void 0) return "";
+  const str = String(value);
+  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+    return '"' + str.replace(/"/g, '""') + '"';
+  }
+  return str;
+}
+function toCsvRow(fields) {
+  return fields.map(escapeCsvField).join(",");
+}
+function detectDelimiter(firstLine) {
+  const commaCount = (firstLine.match(/,/g) ?? []).length;
+  const semicolonCount = (firstLine.match(/;/g) ?? []).length;
+  return semicolonCount > commaCount ? ";" : ",";
+}
+function parseCsvLine(line, delimiter) {
+  const fields = [];
+  let current = "";
+  let inQuotes = false;
+  let i = 0;
+  while (i < line.length) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') {
+          current += '"';
+          i += 2;
+          continue;
+        }
+        inQuotes = false;
+      } else {
+        current += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === delimiter) {
+        fields.push(current);
+        current = "";
+      } else {
+        current += ch;
+      }
+    }
+    i++;
+  }
+  fields.push(current);
+  return fields;
+}
+function parseCsv(content) {
+  const lines = content.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").filter((line) => line.trim().length > 0);
+  if (lines.length === 0) return [];
+  const delimiter = detectDelimiter(lines[0]);
+  return lines.map((line) => parseCsvLine(line, delimiter));
+}
+function registerCsvHandlers() {
+  electron.ipcMain.handle("patients:exportCsv", () => {
+    const db2 = getDb();
+    const HEADER = "full_name,date_of_birth,sex,phone,email,address,insurance_provider,insurance_policy,medical_alerts,notes,tooth_fdi,surface,condition_type,treatment_status,date_performed,performed_by,treatment_notes,price";
+    const patients = db2.prepare("SELECT * FROM patients WHERE archived_at IS NULL ORDER BY full_name").all();
+    const rows = [HEADER];
+    for (const p of patients) {
+      const patientFields = [
+        p.full_name,
+        p.date_of_birth,
+        p.sex,
+        p.phone,
+        p.email,
+        p.address,
+        p.insurance_provider,
+        p.insurance_policy,
+        p.medical_alerts,
+        p.notes
+      ];
+      const treatments = db2.prepare("SELECT * FROM treatments WHERE patient_id = ? ORDER BY date_performed").all(p.id);
+      if (treatments.length === 0) {
+        rows.push(toCsvRow([...patientFields, "", "", "", "", "", "", "", ""]));
+      } else {
+        for (const t of treatments) {
+          rows.push(
+            toCsvRow([
+              ...patientFields,
+              t.tooth_fdi,
+              t.surface,
+              t.condition_type,
+              t.status,
+              t.date_performed,
+              t.performed_by,
+              t.notes,
+              t.price
+            ])
+          );
+        }
+      }
+    }
+    return rows.join("\n");
+  });
+  electron.ipcMain.handle("patients:importCsv", (_event, csvContent) => {
+    if (typeof csvContent !== "string") {
+      return {
+        patientsCreated: 0,
+        patientsSkipped: 0,
+        treatmentsAdded: 0,
+        errors: ["Invalid input: expected a CSV string"]
+      };
+    }
+    const db2 = getDb();
+    const rows = parseCsv(csvContent);
+    const dataRows = rows[0]?.[0]?.toLowerCase().trim() === "full_name" ? rows.slice(1) : rows;
+    let patientsCreated = 0;
+    let patientsSkipped = 0;
+    let treatmentsAdded = 0;
+    const errors = [];
+    const patientGroups = /* @__PURE__ */ new Map();
+    for (const row of dataRows) {
+      if (row.length < 3) continue;
+      const key = `${row[0]?.trim()}|${row[1]?.trim()}|${row[2]?.trim()}`;
+      const group = patientGroups.get(key);
+      if (group) {
+        group.push(row);
+      } else {
+        patientGroups.set(key, [row]);
+      }
+    }
+    const insertPatient = db2.prepare(`
+      INSERT INTO patients (full_name, date_of_birth, sex, phone, email, address,
+        insurance_provider, insurance_policy, medical_alerts, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const insertTreatment = db2.prepare(`
+      INSERT INTO treatments (patient_id, tooth_fdi, surface, condition_type, status,
+        date_performed, performed_by, notes, price)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const upsertCondition = db2.prepare(`
+      INSERT INTO tooth_conditions (patient_id, tooth_fdi, surface, condition)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(patient_id, tooth_fdi, surface) DO UPDATE SET condition = excluded.condition
+    `);
+    const findPatient = db2.prepare(
+      "SELECT id FROM patients WHERE full_name = ? AND date_of_birth = ? AND sex = ? AND archived_at IS NULL"
+    );
+    const importAll = db2.transaction(() => {
+      for (const [key, groupRows] of patientGroups) {
+        const firstRow = groupRows[0];
+        const fullName = firstRow[0]?.trim();
+        const dob = firstRow[1]?.trim();
+        const sex = firstRow[2]?.trim();
+        if (!fullName || !dob || !sex) {
+          errors.push(`Skipping row with missing required fields: ${key}`);
+          continue;
+        }
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
+          errors.push(`Skipping "${fullName}": date_of_birth must be YYYY-MM-DD, got "${dob}"`);
+          continue;
+        }
+        if (!["male", "female", "other"].includes(sex)) {
+          errors.push(
+            `Skipping "${fullName}": sex must be male/female/other, got "${sex}"`
+          );
+          continue;
+        }
+        const existing = findPatient.get(fullName, dob, sex);
+        let patientId;
+        if (existing) {
+          patientId = existing.id;
+          patientsSkipped++;
+        } else {
+          const result = insertPatient.run(
+            fullName,
+            dob,
+            sex,
+            firstRow[3]?.trim() || null,
+            firstRow[4]?.trim() || null,
+            firstRow[5]?.trim() || null,
+            firstRow[6]?.trim() || null,
+            firstRow[7]?.trim() || null,
+            firstRow[8]?.trim() || null,
+            firstRow[9]?.trim() || null
+          );
+          patientId = Number(result.lastInsertRowid);
+          patientsCreated++;
+        }
+        for (const row of groupRows) {
+          const toothFdiStr = row[10]?.trim();
+          if (!toothFdiStr) continue;
+          const toothFdi = Number(toothFdiStr);
+          if (!Number.isInteger(toothFdi) || toothFdi <= 0) {
+            errors.push(
+              `Treatment skipped for "${fullName}": invalid tooth_fdi "${toothFdiStr}"`
+            );
+            continue;
+          }
+          const surface = row[11]?.trim() || null;
+          const conditionType = row[12]?.trim();
+          const status = row[13]?.trim();
+          const datePerformed = row[14]?.trim();
+          if (!conditionType || !status || !datePerformed) {
+            errors.push(
+              `Treatment skipped for "${fullName}": missing condition_type, status, or date_performed`
+            );
+            continue;
+          }
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(datePerformed)) {
+            errors.push(
+              `Treatment skipped for "${fullName}": date_performed must be YYYY-MM-DD, got "${datePerformed}"`
+            );
+            continue;
+          }
+          const priceStr = row[17]?.trim();
+          const price = priceStr ? Number(priceStr) : null;
+          if (price !== null && isNaN(price)) {
+            errors.push(
+              `Treatment skipped for "${fullName}": price is not a valid number "${priceStr}"`
+            );
+            continue;
+          }
+          try {
+            insertTreatment.run(
+              patientId,
+              toothFdi,
+              surface,
+              conditionType,
+              status,
+              datePerformed,
+              row[15]?.trim() || null,
+              row[16]?.trim() || null,
+              price
+            );
+            treatmentsAdded++;
+            if (surface) {
+              upsertCondition.run(patientId, toothFdi, surface, conditionType);
+            }
+          } catch (err) {
+            errors.push(
+              `Treatment insert error for "${fullName}": ${err instanceof Error ? err.message : String(err)}`
+            );
+          }
+        }
+      }
+    });
+    try {
+      importAll();
+    } catch (err) {
+      errors.push(
+        `Transaction failed: ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
+    return { patientsCreated, patientsSkipped, treatmentsAdded, errors };
+  });
+}
+const TRANSACTION_SQL = `
+  SELECT
+    t.id          AS treatmentId,
+    t.patient_id  AS patientId,
+    p.full_name   AS patientName,
+    t.condition_type AS conditionType,
+    t.tooth_fdi   AS toothFdi,
+    t.surface,
+    t.status,
+    t.date_performed AS datePerformed,
+    t.price
+  FROM treatments t
+  JOIN patients p ON p.id = t.patient_id
+  WHERE t.price IS NOT NULL AND t.price > 0 AND p.archived_at IS NULL
+  ORDER BY t.date_performed DESC, t.id DESC
+`;
+function currentYearMonth() {
+  const now = /* @__PURE__ */ new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
+function computeStats(rows) {
+  const thisMonth = currentYearMonth();
+  let totalEarned = 0;
+  let totalOutstanding = 0;
+  let earnedThisMonth = 0;
+  let outstandingThisMonth = 0;
+  const transactions = [];
+  for (const row of rows) {
+    const rowMonth = row.datePerformed.slice(0, 7);
+    if (row.status === "completed") {
+      totalEarned += row.price;
+      if (rowMonth === thisMonth) {
+        earnedThisMonth += row.price;
+      }
+    } else if (row.status === "planned") {
+      totalOutstanding += row.price;
+      if (rowMonth === thisMonth) {
+        outstandingThisMonth += row.price;
+      }
+    }
+    transactions.push({
+      treatmentId: row.treatmentId,
+      patientId: row.patientId,
+      patientName: row.patientName,
+      conditionType: row.conditionType,
+      toothFdi: row.toothFdi,
+      surface: row.surface,
+      status: row.status,
+      datePerformed: row.datePerformed,
+      price: row.price
+    });
+  }
+  return {
+    totalEarned,
+    totalOutstanding,
+    earnedThisMonth,
+    outstandingThisMonth,
+    transactions
+  };
+}
+function registerRevenueHandlers() {
+  electron.ipcMain.handle("revenue:getStats", () => {
+    const db2 = getDb();
+    const rows = db2.prepare(TRANSACTION_SQL).all();
+    return computeStats(rows);
+  });
+}
 function registerIpcHandlers() {
   registerPatientHandlers();
   registerTeethHandlers();
@@ -873,6 +1283,8 @@ function registerIpcHandlers() {
   registerAppointmentHandlers();
   registerLicenseHandlers();
   registerOnboardingHandlers();
+  registerCsvHandlers();
+  registerRevenueHandlers();
 }
 function initAutoUpdater(win) {
   if (!electron.app.isPackaged) return;

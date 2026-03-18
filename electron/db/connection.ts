@@ -2,7 +2,7 @@ import Database from 'better-sqlite3'
 import { app } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import { join } from 'path'
-import { readFileSync, readdirSync } from 'fs'
+import { readFileSync, readdirSync, mkdirSync } from 'fs'
 
 let db: Database.Database
 
@@ -12,7 +12,9 @@ export function getDb(): Database.Database {
 }
 
 export function initDatabase(): void {
-  const dbPath = join(app.getPath('userData'), 'dental.db')
+  const userDataPath = app.getPath('userData')
+  mkdirSync(userDataPath, { recursive: true })
+  const dbPath = join(userDataPath, 'dental.db')
   db = new Database(dbPath)
 
   // Enable WAL mode for better concurrent read performance

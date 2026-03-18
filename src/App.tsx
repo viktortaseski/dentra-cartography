@@ -8,6 +8,7 @@ import { useLicenseStore } from '@/store/licenseStore'
 
 function App(): JSX.Element {
   const theme = useUIStore((s) => s.theme)
+  const fontSize = useUIStore((s) => s.fontSize)
   const { status, isChecking, checkLicense, onboardingComplete, checkOnboarding } = useLicenseStore()
 
   useEffect(() => {
@@ -17,6 +18,14 @@ function App(): JSX.Element {
       document.documentElement.classList.remove('dark')
     }
   }, [theme])
+
+  useEffect(() => {
+    if (fontSize === 'large') {
+      document.documentElement.classList.add('large-text')
+    } else {
+      document.documentElement.classList.remove('large-text')
+    }
+  }, [fontSize])
 
   useEffect(() => {
     void checkLicense()
