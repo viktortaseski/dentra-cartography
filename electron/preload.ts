@@ -44,6 +44,10 @@ const api: ElectronAPI = {
   getLicenseStatus: (): Promise<LicenseStatus> => ipcRenderer.invoke('license:getStatus'),
   activateLicense: (key: string): Promise<ActivateResult> =>
     ipcRenderer.invoke('license:activate', key),
+
+  // Onboarding
+  getOnboardingStatus: (): Promise<boolean> => ipcRenderer.invoke('onboarding:getStatus'),
+  completeOnboarding: (): Promise<void> => ipcRenderer.invoke('onboarding:complete'),
 }
 
 contextBridge.exposeInMainWorld('electron', api)

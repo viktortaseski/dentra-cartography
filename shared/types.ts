@@ -165,6 +165,10 @@ export interface ElectronAPI {
   // License
   getLicenseStatus: () => Promise<LicenseStatus>
   activateLicense: (key: string) => Promise<ActivateResult>
+
+  // Onboarding
+  getOnboardingStatus: () => Promise<boolean>
+  completeOnboarding: () => Promise<void>
 }
 
 declare global {

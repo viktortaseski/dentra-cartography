@@ -85,3 +85,10 @@ export const getLicenseStatus = (): Promise<LicenseStatus> =>
 
 export const activateLicense = (key: string): Promise<ActivateResult> =>
   window.electron.activateLicense(key)
+
+// Onboarding
+export const getOnboardingStatus = (): Promise<boolean> =>
+  window.electron.getOnboardingStatus()
+
+export const completeOnboarding = (): Promise<void> =>
+  window.electron.completeOnboarding()

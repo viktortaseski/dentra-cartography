@@ -854,6 +854,17 @@ function registerLicenseHandlers() {
     return { success: true, licensee: result.payload.licensee };
   });
 }
+function registerOnboardingHandlers() {
+  electron.ipcMain.handle("onboarding:getStatus", () => {
+    const db2 = getDb();
+    const row = db2.prepare("SELECT value FROM meta WHERE key = 'onboarding_completed'").get();
+    return row?.value === "1";
+  });
+  electron.ipcMain.handle("onboarding:complete", () => {
+    const db2 = getDb();
+    db2.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('onboarding_completed', '1')").run();
+  });
+}
 function registerIpcHandlers() {
   registerPatientHandlers();
   registerTeethHandlers();
@@ -861,6 +872,7 @@ function registerIpcHandlers() {
   registerClinicSettingsHandlers();
   registerAppointmentHandlers();
   registerLicenseHandlers();
+  registerOnboardingHandlers();
 }
 function initAutoUpdater(win) {
   if (!electron.app.isPackaged) return;

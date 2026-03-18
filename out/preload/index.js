@@ -32,6 +32,9 @@ const api = {
   quitAndInstall: () => electron.ipcRenderer.invoke("updater:quitAndInstall"),
   // License
   getLicenseStatus: () => electron.ipcRenderer.invoke("license:getStatus"),
-  activateLicense: (key) => electron.ipcRenderer.invoke("license:activate", key)
+  activateLicense: (key) => electron.ipcRenderer.invoke("license:activate", key),
+  // Onboarding
+  getOnboardingStatus: () => electron.ipcRenderer.invoke("onboarding:getStatus"),
+  completeOnboarding: () => electron.ipcRenderer.invoke("onboarding:complete")
 };
 electron.contextBridge.exposeInMainWorld("electron", api);

@@ -17,6 +17,26 @@ export function TreatmentPanel({ patientId, selectedToothFdi }: TreatmentPanelPr
   const { selectedSurface, getCondition } = useChartStore()
 
   const [formOpen, setFormOpen] = useState(false)
+  const [panelHeight, setPanelHeight] = useState(192)
+
+  function handleResizeMouseDown(e: React.MouseEvent<HTMLDivElement>): void {
+    e.preventDefault()
+    const startY = e.clientY
+    const startHeight = panelHeight
+
+    function onMouseMove(ev: MouseEvent): void {
+      const delta = startY - ev.clientY
+      setPanelHeight(Math.max(96, Math.min(600, startHeight + delta)))
+    }
+
+    function onMouseUp(): void {
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onMouseUp)
+    }
+
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
+  }
 
   // Load all treatments for the patient whenever patientId changes
   useEffect(() => {
@@ -44,7 +64,19 @@ export function TreatmentPanel({ patientId, selectedToothFdi }: TreatmentPanelPr
   }
 
   return (
-    <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col flex-shrink-0 max-h-48 overflow-y-auto">
+    <div
+      className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col flex-shrink-0 overflow-y-auto"
+      style={{ height: panelHeight }}
+    >
+      {/* Resize handle — drag upward to expand */}
+      <div
+        className="w-full flex-shrink-0 flex items-center justify-center h-3 cursor-ns-resize group hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+        onMouseDown={handleResizeMouseDown}
+        aria-hidden="true"
+      >
+        <div className="w-8 h-0.5 rounded-full bg-gray-300 dark:bg-gray-600 group-hover:bg-blue-400 dark:group-hover:bg-blue-500 transition-colors" />
+      </div>
+
       {/* Panel header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700">
         <div className="flex items-center gap-3">

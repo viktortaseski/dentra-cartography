@@ -2,7 +2,10 @@ import { useState } from 'react'
 import type { ToothChartEntry, ToothSurface } from '@shared/types'
 import { CONDITION_CONFIG } from '@/lib/conditionConfig'
 import { getToothDefinition } from '@/lib/toothDefinitions'
+import type { ToothDefinition } from '@/lib/toothDefinitions'
+import { getToothImageSrc } from '@/lib/toothImages'
 import { useChartStore } from '@/store/chartStore'
+import { useUIStore } from '@/store/uiStore'
 
 // ── SVG coordinate constants (viewBox 0 0 60 68) ────────────────────────────
 //
@@ -59,6 +62,11 @@ function getSurfaceLabel(
   return CONDITION_CONFIG[record.condition].label
 }
 
+
+function surfaceFillOpacity(fill: string): number {
+  return fill === HEALTHY_FILL ? 0.0 : 0.65
+}
+
 export interface ToothSVGProps {
   fdi: number
   chartEntry: ToothChartEntry | undefined
@@ -67,6 +75,7 @@ export interface ToothSVGProps {
 
 export function ToothSVG({ fdi, chartEntry, isSelected }: ToothSVGProps): JSX.Element {
   const { openConditionPicker } = useChartStore()
+  const theme = useUIStore((s) => s.theme)
   const definition = getToothDefinition(fdi)
 
   const [hoveredSurface, setHoveredSurface] = useState<ToothSurface | null>(null)
@@ -88,31 +97,41 @@ export function ToothSVG({ fdi, chartEntry, isSelected }: ToothSVGProps): JSX.El
   const centerFill = getSurfaceFill(centerSurface, chartEntry)
   const centerLabel = getSurfaceLabel(centerSurface, chartEntry)
 
+  const imageSrc = getToothImageSrc(definition)
+  // Quadrant 2 (upper left) and quadrant 3 (lower left) are mirrored horizontally
+  const shouldMirror = definition !== undefined && (definition.quadrant === 2 || definition.quadrant === 3)
+  const imageTransform = shouldMirror ? 'scale(-1,1) translate(-60,0)' : undefined
+
   return (
     <svg
       viewBox="0 0 60 68"
-      width="60"
-      height="68"
+      width="90"
+      height="100"
       aria-label={`Tooth ${fdi}${definition ? ` — ${definition.name}` : ''}`}
       role="group"
       overflow="visible"
     >
       <title>{definition ? definition.name : `Tooth ${fdi}`}</title>
 
-      {/* 1. Tooth outline background — decorative, not clickable */}
-      <rect
-        x={4}
-        y={2}
-        width={52}
-        height={48}
-        rx={6}
-        fill="white"
-        stroke="#e5e7eb"
-        strokeWidth={1}
-        aria-hidden="true"
-      />
+      {/* Tooth background image — rendered when image is available, transparent background */}
+      {theme === 'dark' && imageSrc !== null && (
+        <rect x={-2} y={-2} width={64} height={58} rx={5} fill="white" opacity={0.92} aria-hidden="true" />
+      )}
+      {imageSrc !== null ? (
+        <image
+          href={imageSrc}
+          x={-2}
+          y={-2}
+          width={64}
+          height={58}
+          opacity={0.9}
+          preserveAspectRatio="xMidYMid meet"
+          aria-hidden="true"
+          transform={imageTransform}
+        />
+      ) : null}
 
-      {/* 2. Center surface: occlusal or incisal */}
+      {/* Center surface: occlusal or incisal */}
       <rect
         x={CENTER_RECT.x}
         y={CENTER_RECT.y}
@@ -120,6 +139,7 @@ export function ToothSVG({ fdi, chartEntry, isSelected }: ToothSVGProps): JSX.El
         height={CENTER_RECT.height}
         rx={CENTER_RECT.rx}
         fill={centerFill}
+        fillOpacity={surfaceFillOpacity(centerFill)}
         stroke={stroke}
         strokeWidth={STROKE_WIDTH}
         cursor="pointer"
@@ -131,10 +151,11 @@ export function ToothSVG({ fdi, chartEntry, isSelected }: ToothSVGProps): JSX.El
         onMouseLeave={() => setHoveredSurface(null)}
       />
 
-      {/* 3. Buccal triangle */}
+      {/* Buccal triangle */}
       <polygon
         points={SURFACE_POLYGONS.buccal}
         fill={getSurfaceFill('buccal', chartEntry)}
+        fillOpacity={surfaceFillOpacity(getSurfaceFill('buccal', chartEntry))}
         stroke={stroke}
         strokeWidth={STROKE_WIDTH}
         cursor="pointer"
@@ -146,10 +167,11 @@ export function ToothSVG({ fdi, chartEntry, isSelected }: ToothSVGProps): JSX.El
         onMouseLeave={() => setHoveredSurface(null)}
       />
 
-      {/* 4. Lingual triangle */}
+      {/* Lingual triangle */}
       <polygon
         points={SURFACE_POLYGONS.lingual}
         fill={getSurfaceFill('lingual', chartEntry)}
+        fillOpacity={surfaceFillOpacity(getSurfaceFill('lingual', chartEntry))}
         stroke={stroke}
         strokeWidth={STROKE_WIDTH}
         cursor="pointer"
@@ -161,10 +183,11 @@ export function ToothSVG({ fdi, chartEntry, isSelected }: ToothSVGProps): JSX.El
         onMouseLeave={() => setHoveredSurface(null)}
       />
 
-      {/* 5. Mesial triangle */}
+      {/* Mesial triangle */}
       <polygon
         points={SURFACE_POLYGONS.mesial}
         fill={getSurfaceFill('mesial', chartEntry)}
+        fillOpacity={surfaceFillOpacity(getSurfaceFill('mesial', chartEntry))}
         stroke={stroke}
         strokeWidth={STROKE_WIDTH}
         cursor="pointer"
@@ -176,10 +199,11 @@ export function ToothSVG({ fdi, chartEntry, isSelected }: ToothSVGProps): JSX.El
         onMouseLeave={() => setHoveredSurface(null)}
       />
 
-      {/* 6. Distal triangle */}
+      {/* Distal triangle */}
       <polygon
         points={SURFACE_POLYGONS.distal}
         fill={getSurfaceFill('distal', chartEntry)}
+        fillOpacity={surfaceFillOpacity(getSurfaceFill('distal', chartEntry))}
         stroke={stroke}
         strokeWidth={STROKE_WIDTH}
         cursor="pointer"
