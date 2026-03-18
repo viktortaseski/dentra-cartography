@@ -4,6 +4,8 @@ const path = require("path");
 const utils = require("@electron-toolkit/utils");
 const Database = require("better-sqlite3");
 const fs = require("fs");
+const crypto = require("crypto");
+const electronUpdater = require("electron-updater");
 let db;
 function getDb() {
   if (!db) throw new Error("Database not initialized. Call initDatabase() first.");
@@ -776,12 +778,121 @@ function registerAppointmentHandlers() {
     }
   });
 }
+const PUBLIC_KEY_PEM = `-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEAQPnKyrPERw3p2ZpUpak9CX42nG6+Q7Ga1xEcdopmnBk=
+-----END PUBLIC KEY-----`;
+function validateLicenseKey(key) {
+  try {
+    const trimmed = key.trim();
+    const dotIndex = trimmed.lastIndexOf(".");
+    if (dotIndex === -1) return { valid: false, error: "Invalid key format" };
+    const payloadB64 = trimmed.slice(0, dotIndex);
+    const sigB64 = trimmed.slice(dotIndex + 1);
+    const payloadJson = Buffer.from(payloadB64, "base64url").toString("utf8");
+    const signature = Buffer.from(sigB64, "base64url");
+    let payload;
+    try {
+      payload = JSON.parse(payloadJson);
+    } catch {
+      return { valid: false, error: "Invalid key format" };
+    }
+    if (payload.productId !== "dental-cartography") {
+      return { valid: false, error: "Invalid product" };
+    }
+    if (payload.expiresAt !== null && new Date(payload.expiresAt) < /* @__PURE__ */ new Date()) {
+      return { valid: false, error: "License has expired" };
+    }
+    const isValid = crypto.verify(
+      null,
+      Buffer.from(payloadJson),
+      { key: PUBLIC_KEY_PEM, format: "pem", type: "spki" },
+      signature
+    );
+    if (!isValid) return { valid: false, error: "Invalid license signature" };
+    return { valid: true, payload };
+  } catch {
+    return { valid: false, error: "Invalid key format" };
+  }
+}
+function registerLicenseHandlers() {
+  electron.ipcMain.handle("license:getStatus", () => {
+    const db2 = getDb();
+    const row = db2.prepare(
+      "SELECT licensee, email, expires_at FROM license_activations ORDER BY id DESC LIMIT 1"
+    ).get();
+    if (!row) return { activated: false };
+    return {
+      activated: true,
+      licensee: row.licensee,
+      email: row.email,
+      expiresAt: row.expires_at
+    };
+  });
+  electron.ipcMain.handle("license:activate", (_event, key) => {
+    if (typeof key !== "string" || key.length === 0) {
+      return { success: false, error: "License key is required" };
+    }
+    const result = validateLicenseKey(key);
+    if (!result.valid || !result.payload) {
+      return { success: false, error: result.error ?? "Invalid license key" };
+    }
+    const db2 = getDb();
+    try {
+      db2.prepare(
+        `INSERT OR IGNORE INTO license_activations (license_key, licensee, email, issued_at, expires_at)
+         VALUES (?, ?, ?, ?, ?)`
+      ).run(
+        key.trim(),
+        result.payload.licensee,
+        result.payload.email,
+        result.payload.issuedAt,
+        result.payload.expiresAt
+      );
+    } catch {
+      return { success: false, error: "Failed to save activation" };
+    }
+    return { success: true, licensee: result.payload.licensee };
+  });
+}
 function registerIpcHandlers() {
   registerPatientHandlers();
   registerTeethHandlers();
   registerTreatmentHandlers();
   registerClinicSettingsHandlers();
   registerAppointmentHandlers();
+  registerLicenseHandlers();
+}
+function initAutoUpdater(win) {
+  if (!electron.app.isPackaged) return;
+  electronUpdater.autoUpdater.autoDownload = true;
+  electronUpdater.autoUpdater.autoInstallOnAppQuit = true;
+  function send(status) {
+    win.webContents.send("updater:status", status);
+  }
+  electronUpdater.autoUpdater.on("checking-for-update", () => send({ kind: "checking" }));
+  electronUpdater.autoUpdater.on(
+    "update-available",
+    (info) => send({ kind: "available", version: info.version })
+  );
+  electronUpdater.autoUpdater.on("update-not-available", () => send({ kind: "not-available" }));
+  electronUpdater.autoUpdater.on(
+    "download-progress",
+    (progress) => send({ kind: "downloading", percent: Math.round(progress.percent) })
+  );
+  electronUpdater.autoUpdater.on(
+    "update-downloaded",
+    (info) => send({ kind: "downloaded", version: info.version })
+  );
+  electronUpdater.autoUpdater.on(
+    "error",
+    (err) => send({ kind: "error", message: err.message })
+  );
+  electron.ipcMain.handle("updater:quitAndInstall", () => {
+    electronUpdater.autoUpdater.quitAndInstall();
+  });
+  setTimeout(() => {
+    void electronUpdater.autoUpdater.checkForUpdates();
+  }, 3e3);
 }
 function createWindow() {
   const win = new electron.BrowserWindow({
@@ -809,11 +920,13 @@ function createWindow() {
   } else {
     win.loadFile(path.join(__dirname, "../renderer/index.html"));
   }
+  return win;
 }
 electron.app.whenReady().then(() => {
   initDatabase();
   registerIpcHandlers();
-  createWindow();
+  const win = createWindow();
+  initAutoUpdater(win);
   electron.app.on("activate", () => {
     if (electron.BrowserWindow.getAllWindows().length === 0) createWindow();
   });

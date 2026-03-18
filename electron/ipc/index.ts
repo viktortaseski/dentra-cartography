@@ -3,6 +3,7 @@ import { registerTeethHandlers } from './teeth'
 import { registerTreatmentHandlers } from './treatments'
 import { registerClinicSettingsHandlers } from './clinicSettings'
 import { registerAppointmentHandlers } from './appointments'
+import { registerLicenseHandlers } from './license'
 
 export function registerIpcHandlers(): void {
   registerPatientHandlers()
@@ -10,4 +11,5 @@ export function registerIpcHandlers(): void {
   registerTreatmentHandlers()
   registerClinicSettingsHandlers()
   registerAppointmentHandlers()
+  registerLicenseHandlers()
 }

@@ -22,6 +22,16 @@ const api = {
   listAppointmentsForPatient: (patientId) => electron.ipcRenderer.invoke("appointments:listForPatient", patientId),
   createAppointment: (data) => electron.ipcRenderer.invoke("appointments:create", data),
   updateAppointment: (id, data) => electron.ipcRenderer.invoke("appointments:update", id, data),
-  deleteAppointment: (id) => electron.ipcRenderer.invoke("appointments:delete", id)
+  deleteAppointment: (id) => electron.ipcRenderer.invoke("appointments:delete", id),
+  // Auto-update
+  onUpdateStatus: (callback) => {
+    const listener = (_, status) => callback(status);
+    electron.ipcRenderer.on("updater:status", listener);
+    return () => electron.ipcRenderer.removeListener("updater:status", listener);
+  },
+  quitAndInstall: () => electron.ipcRenderer.invoke("updater:quitAndInstall"),
+  // License
+  getLicenseStatus: () => electron.ipcRenderer.invoke("license:getStatus"),
+  activateLicense: (key) => electron.ipcRenderer.invoke("license:activate", key)
 };
 electron.contextBridge.exposeInMainWorld("electron", api);

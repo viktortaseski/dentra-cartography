@@ -28,3 +28,6 @@ npm-debug.log*
 # Local env
 .env
 .env.local
+
+# License signing keys — NEVER commit the private key
+keys/private.pem

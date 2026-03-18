@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
-import { ElectronAPI, UpdateStatus } from '@shared/types'
+import { ElectronAPI, LicenseStatus, ActivateResult, UpdateStatus } from '@shared/types'
 
 const api: ElectronAPI = {
   // Patients
@@ -38,7 +38,12 @@ const api: ElectronAPI = {
     ipcRenderer.on('updater:status', listener)
     return () => ipcRenderer.removeListener('updater:status', listener)
   },
-  quitAndInstall: () => ipcRenderer.invoke('updater:quitAndInstall')
+  quitAndInstall: () => ipcRenderer.invoke('updater:quitAndInstall'),
+
+  // License
+  getLicenseStatus: (): Promise<LicenseStatus> => ipcRenderer.invoke('license:getStatus'),
+  activateLicense: (key: string): Promise<ActivateResult> =>
+    ipcRenderer.invoke('license:activate', key),
 }
 
 contextBridge.exposeInMainWorld('electron', api)

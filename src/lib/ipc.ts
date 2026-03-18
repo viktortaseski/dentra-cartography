@@ -11,6 +11,8 @@ import type {
   CreateAppointmentRequest,
   UpdateAppointmentRequest,
   UpdateStatus,
+  LicenseStatus,
+  ActivateResult,
 } from '@shared/types'
 
 // Patient operations
@@ -76,3 +78,10 @@ export const onUpdateStatus = (callback: (status: UpdateStatus) => void): (() =>
 
 export const quitAndInstall = (): Promise<void> =>
   window.electron.quitAndInstall()
+
+// License
+export const getLicenseStatus = (): Promise<LicenseStatus> =>
+  window.electron.getLicenseStatus()
+
+export const activateLicense = (key: string): Promise<ActivateResult> =>
+  window.electron.activateLicense(key)

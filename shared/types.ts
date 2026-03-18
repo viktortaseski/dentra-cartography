@@ -106,6 +106,21 @@ export interface Appointment {
 export type CreateAppointmentRequest = Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>
 export type UpdateAppointmentRequest = Partial<CreateAppointmentRequest>
 
+// ── License ───────────────────────────────────────────────────────────────────
+
+export interface LicenseStatus {
+  activated: boolean
+  licensee?: string
+  email?: string | null
+  expiresAt?: string | null
+}
+
+export interface ActivateResult {
+  success: boolean
+  licensee?: string
+  error?: string
+}
+
 // ── Auto-update ───────────────────────────────────────────────────────────────
 
 export type UpdateStatus =
@@ -146,6 +161,10 @@ export interface ElectronAPI {
   // Auto-update
   onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void
   quitAndInstall: () => Promise<void>
+
+  // License
+  getLicenseStatus: () => Promise<LicenseStatus>
+  activateLicense: (key: string) => Promise<ActivateResult>
 }
 
 declare global {
