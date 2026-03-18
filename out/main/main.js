@@ -1620,8 +1620,8 @@ function registerIntegrationHandlers() {
         }
         const patientId = findPatientId(remote.patient_name, remote.patient_email ?? null, remote.patient_phone ?? null);
         const title = "Check-up";
-        const startTime = remote.time;
-        const endTime = addMinutesToTime(remote.time, 30);
+        const startTime = remote.time.slice(0, 5);
+        const endTime = addMinutesToTime(startTime, 30);
         const status = remote.completed ? "completed" : "scheduled";
         const onlineNote = remote.doctor_name ? `Scheduled online — Dr. ${remote.doctor_name}` : "Scheduled online";
         const notes = remote.notes ? `${remote.notes}
