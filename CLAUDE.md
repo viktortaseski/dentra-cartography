@@ -66,18 +66,18 @@ v1 ships a **"Export Database"** menu item that copies `dental.db` to a user-cho
 
 | Layer | Technology |
 |---|---|
-| Desktop framework | Electron 31+ |
+| Desktop framework | Electron 31.7.7 |
 | Backend (main process) | Node.js + TypeScript |
 | Frontend (renderer) | React 18 + TypeScript (strict mode) |
-| Build tool | Vite + electron-vite |
-| Styling | Tailwind CSS + shadcn/ui |
-| State management | Zustand (slice pattern) |
-| Database | SQLite via better-sqlite3 |
+| Build tool | Vite 5 + electron-vite 2 |
+| Styling | Tailwind CSS 3 |
+| State management | Zustand 4 (slice pattern) |
+| Database | SQLite via better-sqlite3 11 |
 | IPC | Electron ipcMain / ipcRenderer |
-| PDF generation | @react-pdf/renderer |
-| Testing — frontend | Vitest + React Testing Library + Playwright |
-| Testing — backend | Vitest (Node.js) |
-| Packaging | electron-builder (NSIS for Windows, DMG for macOS) |
+| PDF generation | @react-pdf/renderer 3 |
+| i18n | Custom context provider (EN, MK, SQ) |
+| Testing | Vitest 2 |
+| Packaging | electron-builder 24 (NSIS for Windows, DMG for macOS) |
 
 ---
 
@@ -86,52 +86,140 @@ v1 ships a **"Export Database"** menu item that copies `dental.db` to a user-cho
 ```
 dental/
 ├── CLAUDE.md
-├── electron/                        # Main process (Node.js backend)
-│   ├── main.ts                      # Electron app entry, window creation
+├── electron/                          # Main process (Node.js backend)
+│   ├── main.ts                        # Electron app entry, window creation
+│   ├── preload.ts                     # Exposes typed IPC bridge to renderer
 │   ├── ipc/
-│   │   ├── patients.ts
-│   │   ├── teeth.ts
-│   │   ├── treatments.ts
-│   │   └── index.ts
+│   │   ├── index.ts                   # Handler registry
+│   │   ├── patients.ts                # Patient CRUD + validation
+│   │   ├── teeth.ts                   # Tooth condition handlers + validation
+│   │   ├── treatments.ts              # Treatment handlers + validation
+│   │   ├── appointments.ts            # Appointment handlers + validation
+│   │   └── clinicSettings.ts          # Clinic settings handlers + validation
 │   ├── db/
-│   │   ├── connection.ts            # better-sqlite3 setup + migration runner
-│   │   └── migrations/              # 001_initial.sql, 002_*.sql ...
-│   ├── models/
-│   │   ├── patient.ts
-│   │   ├── tooth.ts
-│   │   └── treatment.ts
-│   └── preload.ts                   # Exposes typed IPC bridge to renderer
+│   │   ├── connection.ts              # better-sqlite3 setup + migration runner
+│   │   └── migrations/
+│   │       ├── 001_initial.sql        # patients, tooth_conditions, treatments, meta
+│   │       └── 002_appointments_pricing_clinic.sql  # appointments, clinic_settings
+│   └── models/
+│       ├── patient.ts
+│       ├── tooth.ts
+│       ├── treatment.ts
+│       ├── appointment.ts
+│       └── clinicSettings.ts
 │
-├── src/                             # Renderer process (React frontend)
+├── src/                               # Renderer process (React frontend)
 │   ├── main.tsx
-│   ├── App.tsx
+│   ├── App.tsx                        # Root component with theme provider
 │   ├── types/
+│   │   └── index.ts                   # Re-exports shared types for renderer
 │   ├── store/
-│   ├── hooks/
+│   │   ├── index.ts
+│   │   ├── patientStore.ts            # Patient CRUD + selection state
+│   │   ├── chartStore.ts              # Dental chart state + condition picker
+│   │   ├── treatmentStore.ts          # Treatment list state
+│   │   ├── appointmentStore.ts        # Appointment list + selected date
+│   │   └── uiStore.ts                 # Theme + language (persisted to localStorage)
+│   ├── pages/
+│   │   ├── Dashboard.tsx              # Root layout; manages view routing
+│   │   ├── ChartView.tsx              # Dental chart page wrapper
+│   │   ├── CalendarView.tsx           # Appointments calendar page
+│   │   └── Settings.tsx               # Clinic settings editor
 │   ├── components/
+│   │   ├── layout/
+│   │   │   ├── Sidebar.tsx            # Left nav with patient list
+│   │   │   └── TopBar.tsx             # Top bar with view title + menu
 │   │   ├── chart/
+│   │   │   ├── DentalChart.tsx        # Main chart (32 teeth, two arches)
+│   │   │   ├── ToothSVG.tsx           # Individual tooth SVG (5-6 surfaces)
+│   │   │   └── ConditionPicker.tsx    # Condition selection modal
 │   │   ├── patients/
+│   │   │   ├── PatientCard.tsx        # Sidebar list item
+│   │   │   ├── PatientDetailCard.tsx  # Header card for selected patient
+│   │   │   └── PatientForm.tsx        # Create/edit patient modal
 │   │   ├── treatments/
-│   │   ├── toolbar/
+│   │   │   ├── TreatmentPanel.tsx     # Treatment history panel
+│   │   │   ├── TreatmentRow.tsx       # Single treatment row
+│   │   │   └── TreatmentForm.tsx      # Add treatment modal
+│   │   ├── appointments/
+│   │   │   ├── WeekView.tsx           # 7-day calendar grid
+│   │   │   ├── MiniCalendar.tsx       # Month picker sidebar
+│   │   │   ├── DaySidebar.tsx         # Daily appointment list
+│   │   │   ├── AppointmentForm.tsx    # Create/edit appointment modal
+│   │   │   ├── AppointmentBlock.tsx   # Block in week grid
+│   │   │   └── AppointmentDetailCard.tsx
 │   │   ├── reports/
-│   │   └── layout/
+│   │   │   ├── PatientReport.tsx      # Report layout (not fully wired)
+│   │   │   ├── ReportButton.tsx       # Trigger (not fully wired)
+│   │   │   └── index.ts
+│   │   └── toolbar/
+│   │       └── index.ts
 │   ├── lib/
-│   │   ├── ipc.ts                   # Typed wrappers around window.electron.*
-│   │   ├── toothDefinitions.ts
-│   │   ├── conditionConfig.ts
-│   │   └── numberingSystems.ts
-│   └── pages/
-│       ├── Dashboard.tsx
-│       ├── ChartView.tsx
-│       └── Settings.tsx
+│   │   ├── ipc.ts                     # Typed wrappers around window.electron.*
+│   │   ├── i18n.tsx                   # i18n provider + useTranslation hook
+│   │   ├── toothDefinitions.ts        # FDI metadata for all 32 teeth
+│   │   ├── conditionConfig.ts         # Condition types + colors
+│   │   └── numberingSystems.ts        # FDI ↔ Universal/Palmer conversions
+│   ├── locales/
+│   │   ├── en.ts                      # English
+│   │   ├── mk.ts                      # Macedonian
+│   │   ├── sq.ts                      # Albanian
+│   │   └── index.ts
+│   └── hooks/
+│       └── index.ts
 │
 ├── shared/
-│   └── types.ts                     # Types shared between main and renderer
+│   └── types.ts                       # Types shared between main and renderer
 │
+├── electron.vite.config.ts
 ├── electron-builder.yml
-├── vite.config.ts
+├── tailwind.config.js
 └── package.json
 ```
+
+---
+
+## Database Schema
+
+### Migration 001 — Initial
+
+| Table | Purpose | Key Details |
+|---|---|---|
+| `meta` | Schema versioning | `key` (PK), `value` |
+| `patients` | Patient demographics | id, full_name, dob, sex, contact, insurance, notes, archived_at, timestamps |
+| `tooth_conditions` | Current tooth state | UPSERT on (patient_id, tooth_fdi, surface); latest condition only |
+| `treatments` | Audit log | Append-only; includes status, date, price, performed_by (free text), notes |
+
+### Migration 002 — Appointments + Pricing + Clinic
+
+| Table | Purpose | Key Details |
+|---|---|---|
+| `appointments` | Scheduling | patient_id (FK), title, date (YYYY-MM-DD), start_time, end_time (HH:MM), status, notes |
+| `clinic_settings` | Key-value config | clinic_name, address, phone, email, website, dentist_name |
+
+---
+
+## IPC Channels
+
+| Module | Channel | Description |
+|---|---|---|
+| Patients | `patients:list` | All non-archived patients |
+| | `patients:get` | Single patient by ID |
+| | `patients:create` | Create new patient |
+| | `patients:update` | Partial update |
+| | `patients:archive` | Soft-delete |
+| Teeth | `teeth:getChart` | All conditions for patient |
+| | `teeth:setCondition` | UPSERT tooth surface condition |
+| Treatments | `treatments:listForTooth` | Treatments for a tooth |
+| | `treatments:listForPatient` | All treatments for patient |
+| | `treatments:add` | Append treatment record |
+| Appointments | `appointments:list` | All (optionally by date) |
+| | `appointments:listForPatient` | Patient's appointments |
+| | `appointments:create` | Create appointment |
+| | `appointments:update` | Update appointment |
+| | `appointments:delete` | Delete appointment |
+| Clinic | `clinic:getSettings` | All clinic settings |
+| | `clinic:updateSettings` | Partial settings update |
 
 ---
 
@@ -185,6 +273,20 @@ When a dentist applies a condition: update `tooth_conditions` AND insert into `t
 
 ---
 
+## Zustand Stores
+
+| Store | Key State | Key Actions |
+|---|---|---|
+| `patientStore` | patients[], selectedPatientId | loadPatients, createPatient, updatePatient, archivePatient, selectPatient |
+| `chartStore` | chartEntries[], conditionPickerOpen, selectedToothFdi/Surface | loadChart, setCondition, openConditionPicker, closeConditionPicker |
+| `treatmentStore` | treatments[] | loadTreatmentsForPatient, loadTreatmentsForTooth, addTreatment |
+| `appointmentStore` | appointments[], selectedDate | loadAppointments, createAppointment, updateAppointment, deleteAppointment |
+| `uiStore` | theme, language | setTheme, setLanguage (both persisted to localStorage) |
+
+`chartStore.setCondition` automatically creates a `treatments` record (two writes for one user action).
+
+---
+
 ## Agents
 
 ### `frontend-agent`
@@ -214,6 +316,7 @@ Architecture, planning, cross-cutting concerns, CLAUDE.md updates.
 - Wrap all IPC calls in try/catch; propagate errors to UI state
 - SVG: `aria-label`/`title` on interactive elements, `viewBox` scaling only
 - Zustand: no derived data in store, use selectors
+- Translations: always use `useTranslation()` hook — no hardcoded English strings
 
 ---
 
@@ -221,10 +324,12 @@ Architecture, planning, cross-cutting concerns, CLAUDE.md updates.
 
 | Phase | Focus | Status |
 |---|---|---|
-| 1 | Electron scaffold + Patient CRUD + SQLite | Not started |
-| 2 | Interactive SVG dental chart | Not started |
-| 3 | Treatment history tracking | Not started |
-| 4 | PDF/PNG report generation | Not started |
+| 1 | Electron scaffold + Patient CRUD + SQLite | **Complete** |
+| 2 | Interactive SVG dental chart | **Complete** |
+| 3 | Treatment history tracking | **Complete** |
+| 3b | Appointment scheduling (calendar + week view) | **Complete** |
+| 3c | Clinic settings + multi-language (EN/MK/SQ) + dark/light theme | **Complete** |
+| 4 | PDF/PNG report generation | **In progress** — components exist, not fully wired |
 | 5 | Code signing, installers, auto-update | Not started |
 
 ---
@@ -251,3 +356,6 @@ npm run dist         # Package installer
 - **FDI as canonical ID**: Stored internally, converted at render
 - **contextBridge + preload**: `nodeIntegration: false` always — security boundary maintained
 - **`performed_by` as free text in v1**: Column exists for v2 FK migration without data loss
+- **Custom i18n over a library**: Lightweight context provider; supports EN, MK (Macedonian), SQ (Albanian)
+- **Theme in uiStore + localStorage**: Dark/light toggle persisted across sessions without a DB column
+- **Appointments as a separate table**: Keeps scheduling orthogonal to tooth_conditions/treatments; price column in treatments supports future invoicing

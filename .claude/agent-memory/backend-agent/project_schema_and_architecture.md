@@ -30,6 +30,17 @@ Current migration version: 2.
 - `treatments:listForTooth`, `treatments:listForPatient`, `treatments:add`
 - `clinic:getSettings`, `clinic:updateSettings`
 - `appointments:list`, `appointments:listForPatient`, `appointments:create`, `appointments:update`, `appointments:delete`
+- `updater:status` (push-only, sent via `win.webContents.send`), `updater:quitAndInstall` (invoke)
+
+## Auto-Update (`electron/ipc/updater.ts`)
+
+- `initAutoUpdater(win)` — called in `main.ts` after `createWindow()` returns the window
+- Guarded by `app.isPackaged`; silent in dev
+- `autoUpdater.autoDownload = true`, `autoUpdater.autoInstallOnAppQuit = true`
+- Pushes `UpdateStatus` discriminated union to renderer via `win.webContents.send('updater:status', ...)`
+- `UpdateStatus` variants: `checking`, `available`, `not-available`, `downloading`, `downloaded`, `error`
+- Registers `updater:quitAndInstall` ipcMain handler for renderer-triggered install
+- Checks for updates 3 s after startup
 
 ## Key Types (shared/types.ts)
 

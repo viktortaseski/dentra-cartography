@@ -9,13 +9,31 @@ directories:
 files:
   - out/**/*
 
+# ── Publish (GitHub Releases) ─────────────────────────────────────────────────
+# Requires GH_TOKEN env var with repo write access.
+# Set owner + repo to your GitHub repository before publishing.
+publish:
+  provider: github
+  owner: YOUR_GITHUB_USERNAME
+  repo: dental-cartography
+  releaseType: release
+
+# ── macOS ─────────────────────────────────────────────────────────────────────
 mac:
   category: public.app-category.medical
+  # Code signing: set CSC_LINK (path/base64 of .p12) and CSC_KEY_PASSWORD env vars.
+  # Leave hardenedRuntime + entitlements for notarization.
+  hardenedRuntime: true
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  gatekeeperAssess: false
   target:
     - target: dmg
       arch: [x64, arm64]
 
+# ── Windows ───────────────────────────────────────────────────────────────────
 win:
+  # Code signing: set WIN_CSC_LINK and WIN_CSC_KEY_PASSWORD env vars.
   target:
     - target: nsis
       arch: [x64]

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { usePatientStore, selectSelectedPatient } from '@/store/patientStore'
 import { useChartStore } from '@/store/chartStore'
+import { useTreatmentStore } from '@/store/treatmentStore'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { TopBar } from '@/components/layout/TopBar'
 import { PatientForm } from '@/components/patients/PatientForm'
@@ -10,6 +11,7 @@ import { ChartView } from '@/pages/ChartView'
 import { Settings } from '@/pages/Settings'
 import { CalendarView } from '@/pages/CalendarView'
 import { useTranslation } from '@/lib/i18n'
+import { UpdateBanner } from '@/components/UpdateBanner'
 import type { Patient } from '@/types'
 
 type ModalState =
@@ -25,6 +27,8 @@ export function Dashboard(): JSX.Element {
     usePatientStore()
   const selectedPatient = usePatientStore(selectSelectedPatient)
   const selectedToothFdi = useChartStore((s) => s.selectedToothFdi)
+  const chartEntries = useChartStore((s) => s.chartEntries)
+  const treatments = useTreatmentStore((s) => s.treatments)
 
   const [modal, setModal] = useState<ModalState>({ kind: 'closed' })
   const [activeView, setActiveView] = useState<ActiveView>('chart')
@@ -81,6 +85,7 @@ export function Dashboard(): JSX.Element {
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-hidden">
+      <UpdateBanner />
       {/* Left sidebar */}
       <Sidebar
         patients={patients}
@@ -110,6 +115,8 @@ export function Dashboard(): JSX.Element {
                 <>
                   <PatientDetailCard
                     patient={selectedPatient}
+                    chartEntries={chartEntries}
+                    treatments={treatments}
                     onEdit={handleEditPatient}
                     onArchive={() => void handleArchivePatient()}
                   />

@@ -10,6 +10,7 @@ import type {
   Appointment,
   CreateAppointmentRequest,
   UpdateAppointmentRequest,
+  UpdateStatus,
 } from '@shared/types'
 
 // Patient operations
@@ -68,3 +69,10 @@ export const updateAppointment = (
 
 export const deleteAppointment = (id: number): Promise<void> =>
   window.electron.deleteAppointment(id)
+
+// Auto-update
+export const onUpdateStatus = (callback: (status: UpdateStatus) => void): (() => void) =>
+  window.electron.onUpdateStatus(callback)
+
+export const quitAndInstall = (): Promise<void> =>
+  window.electron.quitAndInstall()

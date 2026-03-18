@@ -3,8 +3,9 @@ import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { initDatabase } from './db/connection'
 import { registerIpcHandlers } from './ipc'
+import { initAutoUpdater } from './ipc/updater'
 
-function createWindow(): void {
+function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
@@ -33,12 +34,15 @@ function createWindow(): void {
   } else {
     win.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  return win
 }
 
 app.whenReady().then(() => {
   initDatabase()
   registerIpcHandlers()
-  createWindow()
+  const win = createWindow()
+  initAutoUpdater(win)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

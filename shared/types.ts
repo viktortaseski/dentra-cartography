@@ -106,6 +106,16 @@ export interface Appointment {
 export type CreateAppointmentRequest = Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>
 export type UpdateAppointmentRequest = Partial<CreateAppointmentRequest>
 
+// ── Auto-update ───────────────────────────────────────────────────────────────
+
+export type UpdateStatus =
+  | { kind: 'checking' }
+  | { kind: 'available'; version: string }
+  | { kind: 'not-available' }
+  | { kind: 'downloading'; percent: number }
+  | { kind: 'downloaded'; version: string }
+  | { kind: 'error'; message: string }
+
 // ── IPC Bridge ───────────────────────────────────────────────────────────────
 
 export interface ElectronAPI {
@@ -132,6 +142,10 @@ export interface ElectronAPI {
   createAppointment: (data: CreateAppointmentRequest) => Promise<Appointment>
   updateAppointment: (id: number, data: UpdateAppointmentRequest) => Promise<Appointment>
   deleteAppointment: (id: number) => Promise<void>
+
+  // Auto-update
+  onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void
+  quitAndInstall: () => Promise<void>
 }
 
 declare global {

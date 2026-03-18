@@ -1,8 +1,11 @@
-import type { Patient } from '@shared/types'
+import type { Patient, ToothChartEntry, Treatment } from '@shared/types'
 import { useTranslation } from '@/lib/i18n'
+import { ReportButton } from '@/components/reports/ReportButton'
 
 interface PatientDetailCardProps {
   patient: Patient
+  chartEntries: ToothChartEntry[]
+  treatments: Treatment[]
   onEdit: () => void
   onArchive: () => void
 }
@@ -37,6 +40,8 @@ function capitalize(s: string): string {
 
 export function PatientDetailCard({
   patient,
+  chartEntries,
+  treatments,
   onEdit,
   onArchive,
 }: PatientDetailCardProps): JSX.Element {
@@ -62,6 +67,11 @@ export function PatientDetailCard({
           </p>
         </div>
         <div className="flex items-start gap-2 shrink-0">
+          <ReportButton
+            patient={patient}
+            chartEntries={chartEntries}
+            treatments={treatments}
+          />
           <button
             type="button"
             onClick={onEdit}

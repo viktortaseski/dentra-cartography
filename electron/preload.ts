@@ -1,5 +1,5 @@
-import { contextBridge, ipcRenderer } from 'electron'
-import { ElectronAPI } from '@shared/types'
+import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
+import { ElectronAPI, UpdateStatus } from '@shared/types'
 
 const api: ElectronAPI = {
   // Patients
@@ -30,7 +30,15 @@ const api: ElectronAPI = {
     ipcRenderer.invoke('appointments:listForPatient', patientId),
   createAppointment: (data) => ipcRenderer.invoke('appointments:create', data),
   updateAppointment: (id, data) => ipcRenderer.invoke('appointments:update', id, data),
-  deleteAppointment: (id) => ipcRenderer.invoke('appointments:delete', id)
+  deleteAppointment: (id) => ipcRenderer.invoke('appointments:delete', id),
+
+  // Auto-update
+  onUpdateStatus: (callback: (status: UpdateStatus) => void) => {
+    const listener = (_: IpcRendererEvent, status: UpdateStatus) => callback(status)
+    ipcRenderer.on('updater:status', listener)
+    return () => ipcRenderer.removeListener('updater:status', listener)
+  },
+  quitAndInstall: () => ipcRenderer.invoke('updater:quitAndInstall')
 }
 
 contextBridge.exposeInMainWorld('electron', api)
