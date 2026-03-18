@@ -7,6 +7,7 @@ import { registerLicenseHandlers } from './license'
 import { registerOnboardingHandlers } from './onboarding'
 import { registerCsvHandlers } from './csv'
 import { registerRevenueHandlers } from './revenue'
+import { registerIntegrationHandlers } from './integration'
 
 export function registerIpcHandlers(): void {
   registerPatientHandlers()
@@ -18,4 +19,5 @@ export function registerIpcHandlers(): void {
   registerOnboardingHandlers()
   registerCsvHandlers()
   registerRevenueHandlers()
+  registerIntegrationHandlers()
 }

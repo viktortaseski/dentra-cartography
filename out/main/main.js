@@ -4,7 +4,9 @@ const path = require("path");
 const utils = require("@electron-toolkit/utils");
 const Database = require("better-sqlite3");
 const fs = require("fs");
+const child_process = require("child_process");
 const crypto = require("crypto");
+const os = require("os");
 const electronUpdater = require("electron-updater");
 let db;
 function getDb() {
@@ -626,12 +628,14 @@ function rowToAppointment(row) {
   return {
     id: row.id,
     patientId: row.patient_id,
+    patientName: row.patient_name,
     title: row.title,
     date: row.date,
     startTime: row.start_time,
     endTime: row.end_time,
     status: row.status,
     notes: row.notes,
+    source: row.source ?? "local",
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
@@ -640,12 +644,14 @@ const SELECT_APPOINTMENT = `
   SELECT
     id,
     patient_id,
+    patient_name,
     title,
     date,
     start_time,
     end_time,
     status,
     notes,
+    source,
     created_at,
     updated_at
   FROM appointments
@@ -868,6 +874,41 @@ function registerAppointmentHandlers() {
     }
   });
 }
+function getMacAddresses() {
+  const interfaces = os.networkInterfaces();
+  const macs = Object.values(interfaces).flat().map((entry) => entry?.mac?.toLowerCase() ?? "").filter((mac) => mac !== "" && mac !== "00:00:00:00:00:00").sort();
+  return Array.from(new Set(macs)).join("|");
+}
+function getPlatformMachineId() {
+  try {
+    if (process.platform === "win32") {
+      const output = child_process.execFileSync(
+        "reg",
+        ["query", "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography", "/v", "MachineGuid"],
+        { encoding: "utf8" }
+      );
+      const match = output.match(/MachineGuid\s+REG_\w+\s+([^\r\n]+)/);
+      return match?.[1]?.trim() ?? null;
+    }
+    if (process.platform === "darwin") {
+      const output = child_process.execFileSync("ioreg", ["-rd1", "-c", "IOPlatformExpertDevice"], { encoding: "utf8" });
+      const match = output.match(/"IOPlatformUUID" = "([^"]+)"/);
+      return match?.[1]?.trim() ?? null;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+function getMachineFingerprint() {
+  const raw = [
+    getPlatformMachineId() ?? os.hostname().toLowerCase(),
+    os.platform(),
+    os.arch(),
+    getMacAddresses()
+  ].join("|");
+  return crypto.createHash("sha256").update(raw).digest("hex");
+}
 const PUBLIC_KEY_PEM = `-----BEGIN PUBLIC KEY-----
 MCowBQYDK2VwAyEAQPnKyrPERw3p2ZpUpak9CX42nG6+Q7Ga1xEcdopmnBk=
 -----END PUBLIC KEY-----`;
@@ -889,6 +930,21 @@ function validateLicenseKey(key) {
     if (payload.productId !== "dental-cartography") {
       return { valid: false, error: "Invalid product" };
     }
+    if (typeof payload.licensee !== "string" || payload.licensee.trim().length === 0) {
+      return { valid: false, error: "Invalid license payload" };
+    }
+    if (payload.email !== null && typeof payload.email !== "string") {
+      return { valid: false, error: "Invalid license payload" };
+    }
+    if (typeof payload.issuedAt !== "string" || payload.issuedAt.length === 0) {
+      return { valid: false, error: "Invalid license payload" };
+    }
+    if (payload.expiresAt !== null && typeof payload.expiresAt !== "string") {
+      return { valid: false, error: "Invalid license payload" };
+    }
+    if (payload.machineCode !== void 0 && typeof payload.machineCode !== "string") {
+      return { valid: false, error: "Invalid license payload" };
+    }
     if (payload.expiresAt !== null && new Date(payload.expiresAt) < /* @__PURE__ */ new Date()) {
       return { valid: false, error: "License has expired" };
     }
@@ -904,45 +960,109 @@ function validateLicenseKey(key) {
     return { valid: false, error: "Invalid key format" };
   }
 }
-function registerLicenseHandlers() {
-  electron.ipcMain.handle("license:getStatus", () => {
-    const db2 = getDb();
-    const row = db2.prepare(
-      "SELECT licensee, email, expires_at FROM license_activations ORDER BY id DESC LIMIT 1"
-    ).get();
-    if (!row) return { activated: false };
+function getLatestActivation() {
+  const db2 = getDb();
+  return db2.prepare("SELECT id, license_key, machine_id FROM license_activations ORDER BY id DESC LIMIT 1").get();
+}
+function syncStoredMachineId(id, machineId) {
+  getDb().prepare("UPDATE license_activations SET machine_id = ? WHERE id = ?").run(machineId, id);
+}
+function resolveBoundMachineId(row, currentMachineId) {
+  const validation = validateLicenseKey(row.license_key);
+  if (!validation.valid || !validation.payload) return null;
+  const boundMachineId = validation.payload.machineCode ?? row.machine_id;
+  if (!boundMachineId) return null;
+  if (boundMachineId === currentMachineId && row.machine_id !== boundMachineId) {
+    syncStoredMachineId(row.id, boundMachineId);
+  }
+  return boundMachineId;
+}
+function getMachineCode() {
+  return { machineCode: getMachineFingerprint() };
+}
+function getLicenseStatus() {
+  const row = getLatestActivation();
+  if (!row) return { activated: false };
+  const validation = validateLicenseKey(row.license_key);
+  if (!validation.valid || !validation.payload) {
+    return { activated: false, error: validation.error ?? "Stored license is invalid" };
+  }
+  const currentMachineId = getMachineFingerprint();
+  const boundMachineId = resolveBoundMachineId(row, currentMachineId);
+  if (!boundMachineId) {
     return {
-      activated: true,
-      licensee: row.licensee,
-      email: row.email,
-      expiresAt: row.expires_at
+      activated: false,
+      error: "This license must be reissued for this device. Generate a machine code and request a new key."
     };
-  });
-  electron.ipcMain.handle("license:activate", (_event, key) => {
-    if (typeof key !== "string" || key.length === 0) {
-      return { success: false, error: "License key is required" };
+  }
+  if (boundMachineId !== currentMachineId) {
+    return {
+      activated: false,
+      error: "This license is activated on another device. Contact support to transfer your license."
+    };
+  }
+  return {
+    activated: true,
+    licensee: validation.payload.licensee,
+    email: validation.payload.email,
+    expiresAt: validation.payload.expiresAt
+  };
+}
+function activateLicense(key) {
+  if (typeof key !== "string" || key.trim().length === 0) {
+    return { success: false, error: "License key is required" };
+  }
+  const trimmedKey = key.trim();
+  const validation = validateLicenseKey(trimmedKey);
+  if (!validation.valid || !validation.payload) {
+    return { success: false, error: validation.error ?? "Invalid license key" };
+  }
+  const currentMachineId = getMachineFingerprint();
+  if (!validation.payload.machineCode) {
+    return {
+      success: false,
+      error: "This key is not machine-bound. Send this device machine code to support and request a new key."
+    };
+  }
+  if (validation.payload.machineCode !== currentMachineId) {
+    return {
+      success: false,
+      error: "This license key was issued for another device. Request a key for this machine code."
+    };
+  }
+  const db2 = getDb();
+  const existing = db2.prepare("SELECT id, license_key, machine_id FROM license_activations WHERE license_key = ?").get(trimmedKey);
+  if (existing) {
+    const boundMachineId = resolveBoundMachineId(existing, currentMachineId);
+    if (!boundMachineId || boundMachineId !== currentMachineId) {
+      return {
+        success: false,
+        error: "This license key is already activated on another device."
+      };
     }
-    const result = validateLicenseKey(key);
-    if (!result.valid || !result.payload) {
-      return { success: false, error: result.error ?? "Invalid license key" };
-    }
-    const db2 = getDb();
-    try {
-      db2.prepare(
-        `INSERT OR IGNORE INTO license_activations (license_key, licensee, email, issued_at, expires_at)
-         VALUES (?, ?, ?, ?, ?)`
-      ).run(
-        key.trim(),
-        result.payload.licensee,
-        result.payload.email,
-        result.payload.issuedAt,
-        result.payload.expiresAt
-      );
-    } catch {
-      return { success: false, error: "Failed to save activation" };
-    }
-    return { success: true, licensee: result.payload.licensee };
-  });
+    return { success: true, licensee: validation.payload.licensee };
+  }
+  try {
+    db2.prepare(
+      `INSERT INTO license_activations (license_key, licensee, email, issued_at, expires_at, machine_id)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).run(
+      trimmedKey,
+      validation.payload.licensee,
+      validation.payload.email,
+      validation.payload.issuedAt,
+      validation.payload.expiresAt,
+      validation.payload.machineCode
+    );
+  } catch {
+    return { success: false, error: "Failed to save activation" };
+  }
+  return { success: true, licensee: validation.payload.licensee };
+}
+function registerLicenseHandlers() {
+  electron.ipcMain.handle("license:getStatus", () => getLicenseStatus());
+  electron.ipcMain.handle("license:activate", (_event, key) => activateLicense(key));
+  electron.ipcMain.handle("license:getMachineCode", () => getMachineCode());
 }
 function registerOnboardingHandlers() {
   electron.ipcMain.handle("onboarding:getStatus", () => {
@@ -1275,6 +1395,272 @@ function registerRevenueHandlers() {
     return computeStats(rows);
   });
 }
+function getSetting(key) {
+  const row = getDb().prepare("SELECT value FROM integration_settings WHERE key = ?").get(key);
+  return row ? row.value : null;
+}
+function upsertSetting(key, value) {
+  getDb().prepare(
+    `INSERT INTO integration_settings (key, value) VALUES (?, ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+  ).run(key, value);
+}
+function readConfig() {
+  const apiUrl = getSetting("api_url");
+  const clinicName = getSetting("clinic_name");
+  const username = getSetting("username");
+  const password = getSetting("password");
+  if (!apiUrl || !clinicName || !username || !password) {
+    return null;
+  }
+  return { apiUrl, clinicName, username, password };
+}
+function addMinutesToTime(hhmm, minutes) {
+  const [hourStr, minuteStr] = hhmm.split(":");
+  const totalMinutes = Number(hourStr) * 60 + Number(minuteStr) + minutes;
+  const h = Math.floor(totalMinutes / 60) % 24;
+  const m = totalMinutes % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+function findPatientId(fullName, email, phone) {
+  const db2 = getDb();
+  const byName = db2.prepare(`SELECT id FROM patients WHERE full_name = ? AND archived_at IS NULL LIMIT 1`).get(fullName);
+  if (byName) return byName.id;
+  if (email) {
+    const byEmail = db2.prepare(`SELECT id FROM patients WHERE email = ? AND archived_at IS NULL LIMIT 1`).get(email);
+    if (byEmail) return byEmail.id;
+  }
+  if (phone) {
+    const byPhone = db2.prepare(`SELECT id FROM patients WHERE phone = ? AND archived_at IS NULL LIMIT 1`).get(phone);
+    if (byPhone) return byPhone.id;
+  }
+  return null;
+}
+let tokenCache = null;
+async function getToken(config) {
+  const now = Date.now();
+  if (tokenCache && tokenCache.expiresAt - now > 5 * 60 * 1e3) {
+    return tokenCache.token;
+  }
+  const loginResponse = await fetch(`${config.apiUrl}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      clinicName: config.clinicName,
+      username: config.username,
+      password: config.password
+    })
+  });
+  if (!loginResponse.ok) {
+    const body = await loginResponse.text();
+    throw new Error(`Authentication failed: ${loginResponse.status} ${body}`);
+  }
+  let token = null;
+  const setCookie = loginResponse.headers.get("set-cookie");
+  if (setCookie) {
+    const match = setCookie.match(/admin_session=([^;]+)/);
+    if (match) token = match[1];
+  }
+  if (!token) {
+    try {
+      const body = await loginResponse.json();
+      if (typeof body.token === "string") token = body.token;
+      else if (typeof body.accessToken === "string") token = body.accessToken;
+    } catch {
+    }
+  }
+  if (!token) throw new Error("Could not extract authentication token from login response");
+  tokenCache = { token, expiresAt: now + 7.5 * 60 * 60 * 1e3 };
+  return token;
+}
+function registerIntegrationHandlers() {
+  electron.ipcMain.handle("integration:getConfig", () => {
+    return {
+      apiUrl: getSetting("api_url") ?? "",
+      clinicName: getSetting("clinic_name") ?? "",
+      username: getSetting("username") ?? ""
+    };
+  });
+  electron.ipcMain.handle(
+    "integration:saveConfig",
+    (_event, data) => {
+      if (!data || typeof data !== "object" || Array.isArray(data)) {
+        throw new Error("Invalid integration config: expected a non-array object");
+      }
+      const d = data;
+      const fields = [
+        ["apiUrl", "api_url"],
+        ["clinicName", "clinic_name"],
+        ["username", "username"],
+        ["password", "password"]
+      ];
+      for (const [jsKey, dbKey] of fields) {
+        if (typeof d[jsKey] !== "string") {
+          throw new Error(
+            `Invalid integration config: field "${jsKey}" must be a string`
+          );
+        }
+        upsertSetting(dbKey, d[jsKey]);
+      }
+    }
+  );
+  electron.ipcMain.handle(
+    "integration:testConnection",
+    async () => {
+      const config = readConfig();
+      if (!config) {
+        return { success: false, error: "Connection not configured" };
+      }
+      try {
+        await getToken(config);
+        return { success: true };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return { success: false, error: message };
+      }
+    }
+  );
+  electron.ipcMain.handle("integration:sync", async () => {
+    const config = readConfig();
+    if (!config) {
+      return { synced: 0, errors: ["Not configured"] };
+    }
+    let token = null;
+    try {
+      const loginResponse = await fetch(`${config.apiUrl}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clinicName: config.clinicName,
+          username: config.username,
+          password: config.password
+        })
+      });
+      if (!loginResponse.ok) {
+        return {
+          synced: 0,
+          errors: [`Authentication failed: ${loginResponse.statusText}`]
+        };
+      }
+      const setCookie = loginResponse.headers.get("set-cookie");
+      if (setCookie) {
+        const match = setCookie.match(/admin_session=([^;]+)/);
+        if (match) {
+          token = match[1];
+        }
+      }
+      if (!token) {
+        try {
+          const body = await loginResponse.json();
+          if (typeof body.token === "string") {
+            token = body.token;
+          } else if (typeof body.accessToken === "string") {
+            token = body.accessToken;
+          }
+        } catch {
+        }
+      }
+      if (!token) {
+        return { synced: 0, errors: ["Could not extract authentication token from login response"] };
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { synced: 0, errors: [`Authentication error: ${message}`] };
+    }
+    let remoteAppointments;
+    try {
+      const apptResponse = await fetch(`${config.apiUrl}/api/appointments`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Cookie": `admin_session=${token}`
+        }
+      });
+      if (!apptResponse.ok) {
+        return {
+          synced: 0,
+          errors: [`Failed to fetch appointments: ${apptResponse.statusText}`]
+        };
+      }
+      const apptBody = await apptResponse.json();
+      remoteAppointments = Array.isArray(apptBody) ? apptBody : apptBody.appointments ?? [];
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { synced: 0, errors: [`Fetch error: ${message}`] };
+    }
+    const db2 = getDb();
+    const findStmt = db2.prepare(
+      `SELECT id FROM appointments WHERE external_id = ? LIMIT 1`
+    );
+    const insertStmt = db2.prepare(`
+      INSERT INTO appointments
+        (external_id, source, patient_id, patient_name, title, date, start_time, end_time, status, notes)
+      VALUES (?, 'external', ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const updateStmt = db2.prepare(`
+      UPDATE appointments SET
+        patient_id   = ?,
+        patient_name = ?,
+        title        = ?,
+        date         = ?,
+        start_time   = ?,
+        end_time     = ?,
+        status       = ?,
+        notes        = ?,
+        updated_at   = datetime('now')
+      WHERE external_id = ?
+    `);
+    let synced = 0;
+    const errors = [];
+    for (const remote of remoteAppointments) {
+      try {
+        if (typeof remote.id !== "string" || typeof remote.patient_name !== "string" || typeof remote.date !== "string" || typeof remote.time !== "string") {
+          errors.push(`Skipping malformed remote appointment: ${JSON.stringify(remote)}`);
+          continue;
+        }
+        const patientId = findPatientId(remote.patient_name, remote.patient_email ?? null, remote.patient_phone ?? null);
+        const title = "Check-up";
+        const startTime = remote.time;
+        const endTime = addMinutesToTime(remote.time, 30);
+        const status = remote.completed ? "completed" : "scheduled";
+        const onlineNote = remote.doctor_name ? `Scheduled online — Dr. ${remote.doctor_name}` : "Scheduled online";
+        const notes = remote.notes ? `${remote.notes}
+${onlineNote}` : onlineNote;
+        const existing = findStmt.get(remote.id);
+        if (existing) {
+          updateStmt.run(
+            patientId,
+            remote.patient_name,
+            title,
+            remote.date,
+            startTime,
+            endTime,
+            status,
+            notes,
+            remote.id
+          );
+        } else {
+          insertStmt.run(
+            remote.id,
+            patientId,
+            remote.patient_name,
+            title,
+            remote.date,
+            startTime,
+            endTime,
+            status,
+            notes
+          );
+        }
+        synced++;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        errors.push(`Error syncing appointment ${remote.id}: ${message}`);
+      }
+    }
+    return { synced, errors };
+  });
+}
 function registerIpcHandlers() {
   registerPatientHandlers();
   registerTeethHandlers();
@@ -1285,6 +1671,7 @@ function registerIpcHandlers() {
   registerOnboardingHandlers();
   registerCsvHandlers();
   registerRevenueHandlers();
+  registerIntegrationHandlers();
 }
 function initAutoUpdater(win) {
   if (!electron.app.isPackaged) return;

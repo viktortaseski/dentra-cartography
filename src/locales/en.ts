@@ -149,6 +149,38 @@ export const en = {
   saveNote: 'Save Note',
   noteSaved: 'Saved',
 
+  // Integrations (Settings tab)
+  integrations: 'Integrations',
+  integrationDesc: 'Connect to your online appointment booking service to sync appointments into the calendar.',
+  apiUrl: 'API URL',
+  clinicNameIntegration: 'Clinic Name',
+  usernameField: 'Username',
+  passwordField: 'Password',
+  testConnection: 'Test Connection',
+  connectionSuccess: 'Connected',
+  saveConfiguration: 'Save Configuration',
+  configSaved: 'Configuration saved',
+
+  // Calendar sync
+  sync: 'Sync',
+  synced: (n: number) => `Synced ${n} appointment${n === 1 ? '' : 's'}`,
+
+  // License
+  licenseTab: 'License',
+  licenseStatus: 'License Status',
+  licenseActivated: 'Activated',
+  licenseNotActivated: 'Not Activated',
+  licenseActivatedFor: (name: string) => `Licensed to ${name}`,
+  licenseExpires: (date: string) => `Expires ${date}`,
+  licenseNeverExpires: 'Never expires',
+  machineCode: 'Machine Code',
+  machineCodeDesc: 'Send this code to support to receive a license key bound to this device.',
+  licenseKey: 'License Key',
+  licenseKeyPlaceholder: 'Paste your license key here…',
+  activateLicense: 'Activate',
+  activating: 'Activating…',
+  licenseActivateSuccess: (name: string) => `Activated for ${name}`,
+
   // Misc
   noPatientsMatch: 'No patients match.',
 

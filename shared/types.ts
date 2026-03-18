@@ -98,13 +98,15 @@ export type AppointmentStatus = 'scheduled' | 'completed' | 'cancelled' | 'no_sh
 
 export interface Appointment {
   id: number
-  patientId: number
+  patientId: number | null
+  patientName: string | null   // stored from external sync; null for local appointments
   title: string
   date: string         // YYYY-MM-DD
   startTime: string    // HH:MM
   endTime: string      // HH:MM
   status: AppointmentStatus
   notes: string | null
+  source?: 'local' | 'external'
   createdAt: string
   updatedAt: string
 }
@@ -134,6 +136,20 @@ export interface RevenueStats {
   transactions: RevenueTransaction[]  // all treatments with price > 0, newest first
 }
 
+// ── Integration ───────────────────────────────────────────────────────────────
+
+export interface IntegrationConfig {
+  apiUrl: string
+  clinicName: string
+  username: string
+  password: string
+}
+
+export interface SyncResult {
+  synced: number
+  errors: string[]
+}
+
 // ── CSV Import/Export ─────────────────────────────────────────────────────────
 
 export interface CsvImportResult {
@@ -157,6 +173,10 @@ export interface ActivateResult {
   success: boolean
   licensee?: string
   error?: string
+}
+
+export interface LicenseMachineCode {
+  machineCode: string
 }
 
 // ── Auto-update ───────────────────────────────────────────────────────────────
@@ -206,6 +226,7 @@ export interface ElectronAPI {
   // License
   getLicenseStatus: () => Promise<LicenseStatus>
   activateLicense: (key: string) => Promise<ActivateResult>
+  getLicenseMachineCode: () => Promise<LicenseMachineCode>
 
   // Onboarding
   getOnboardingStatus: () => Promise<boolean>
@@ -217,6 +238,12 @@ export interface ElectronAPI {
 
   // Revenue
   getRevenueStats: () => Promise<RevenueStats>
+
+  // Integration
+  getIntegrationConfig: () => Promise<IntegrationConfig>
+  saveIntegrationConfig: (config: IntegrationConfig) => Promise<void>
+  testIntegrationConnection: () => Promise<{ success: boolean; error?: string }>
+  syncExternalAppointments: () => Promise<SyncResult>
 }
 
 declare global {

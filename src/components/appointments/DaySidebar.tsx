@@ -60,7 +60,10 @@ export function DaySidebar({
               </p>
               <p className="text-xs text-gray-600 dark:text-gray-400 truncate">{appt.title}</p>
               <p className="text-xs text-gray-400 dark:text-gray-500 truncate">
-                {patientMap.get(appt.patientId) ?? 'Unknown patient'}
+                {
+  (appt.patientId != null ? patientMap.get(appt.patientId) : undefined)
+  ?? (appt.patientName ? `[Online] ${appt.patientName}` : 'Unknown patient')
+}
               </p>
             </button>
           ))

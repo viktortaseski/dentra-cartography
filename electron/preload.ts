@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
-import { ElectronAPI, LicenseStatus, ActivateResult, UpdateStatus } from '@shared/types'
+import { ElectronAPI, LicenseStatus, ActivateResult, UpdateStatus, LicenseMachineCode } from '@shared/types'
 
 const api: ElectronAPI = {
   // Patients
@@ -47,6 +47,8 @@ const api: ElectronAPI = {
   getLicenseStatus: (): Promise<LicenseStatus> => ipcRenderer.invoke('license:getStatus'),
   activateLicense: (key: string): Promise<ActivateResult> =>
     ipcRenderer.invoke('license:activate', key),
+  getLicenseMachineCode: (): Promise<LicenseMachineCode> =>
+    ipcRenderer.invoke('license:getMachineCode'),
 
   // Onboarding
   getOnboardingStatus: (): Promise<boolean> => ipcRenderer.invoke('onboarding:getStatus'),
@@ -58,6 +60,12 @@ const api: ElectronAPI = {
 
   // Revenue
   getRevenueStats: () => ipcRenderer.invoke('revenue:getStats'),
+
+  // Integration
+  getIntegrationConfig: () => ipcRenderer.invoke('integration:getConfig'),
+  saveIntegrationConfig: (config) => ipcRenderer.invoke('integration:saveConfig', config),
+  testIntegrationConnection: () => ipcRenderer.invoke('integration:testConnection'),
+  syncExternalAppointments: () => ipcRenderer.invoke('integration:sync'),
 }
 
 contextBridge.exposeInMainWorld('electron', api)

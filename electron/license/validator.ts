@@ -10,6 +10,7 @@ export interface LicensePayload {
   issuedAt: string
   expiresAt: string | null
   productId: string
+  machineCode?: string
 }
 
 export interface ValidationResult {
@@ -39,6 +40,26 @@ export function validateLicenseKey(key: string): ValidationResult {
 
     if (payload.productId !== 'dental-cartography') {
       return { valid: false, error: 'Invalid product' }
+    }
+
+    if (typeof payload.licensee !== 'string' || payload.licensee.trim().length === 0) {
+      return { valid: false, error: 'Invalid license payload' }
+    }
+
+    if (payload.email !== null && typeof payload.email !== 'string') {
+      return { valid: false, error: 'Invalid license payload' }
+    }
+
+    if (typeof payload.issuedAt !== 'string' || payload.issuedAt.length === 0) {
+      return { valid: false, error: 'Invalid license payload' }
+    }
+
+    if (payload.expiresAt !== null && typeof payload.expiresAt !== 'string') {
+      return { valid: false, error: 'Invalid license payload' }
+    }
+
+    if (payload.machineCode !== undefined && typeof payload.machineCode !== 'string') {
+      return { valid: false, error: 'Invalid license payload' }
     }
 
     if (payload.expiresAt !== null && new Date(payload.expiresAt) < new Date()) {

@@ -1,18 +1,27 @@
 import { create } from 'zustand'
 import type { LicenseStatus, ActivateResult } from '@shared/types'
-import { getLicenseStatus, activateLicense, getOnboardingStatus, completeOnboarding } from '@/lib/ipc'
+import {
+  getLicenseStatus,
+  activateLicense,
+  getLicenseMachineCode,
+  getOnboardingStatus,
+  completeOnboarding,
+} from '@/lib/ipc'
 
 interface LicenseState {
   status: LicenseStatus | null
   isChecking: boolean
   isActivating: boolean
   activationError: string | null
+  machineCode: string | null
+  isLoadingMachineCode: boolean
   onboardingComplete: boolean | null
 }
 
 interface LicenseActions {
   checkLicense: () => Promise<void>
   activate: (key: string) => Promise<ActivateResult>
+  loadMachineCode: () => Promise<void>
   checkOnboarding: () => Promise<void>
   markOnboardingComplete: () => Promise<void>
 }
@@ -24,15 +33,25 @@ export const useLicenseStore = create<LicenseStore>((set) => ({
   isChecking: false,
   isActivating: false,
   activationError: null,
+  machineCode: null,
+  isLoadingMachineCode: false,
   onboardingComplete: null,
 
   checkLicense: async () => {
     set({ isChecking: true })
     try {
       const status = await getLicenseStatus()
-      set({ status, isChecking: false })
+      set({
+        status,
+        isChecking: false,
+        activationError: status.activated ? null : (status.error ?? null),
+      })
     } catch {
-      set({ status: { activated: false }, isChecking: false })
+      set({
+        status: { activated: false },
+        isChecking: false,
+        activationError: 'Failed to check license status',
+      })
     }
   },
 
@@ -50,6 +69,16 @@ export const useLicenseStore = create<LicenseStore>((set) => ({
     } catch {
       set({ isActivating: false, activationError: 'Activation failed' })
       return { success: false, error: 'Activation failed' }
+    }
+  },
+
+  loadMachineCode: async () => {
+    set({ isLoadingMachineCode: true })
+    try {
+      const result = await getLicenseMachineCode()
+      set({ machineCode: result.machineCode, isLoadingMachineCode: false })
+    } catch {
+      set({ machineCode: null, isLoadingMachineCode: false })
     }
   },
 

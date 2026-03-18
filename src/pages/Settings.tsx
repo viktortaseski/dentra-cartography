@@ -1,11 +1,29 @@
 import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'react'
-import type { ClinicSettings, CsvImportResult } from '@shared/types'
-import { getClinicSettings, updateClinicSettings, exportPatientsCsv, importPatientsCsv } from '@/lib/ipc'
+import type { ClinicSettings, CsvImportResult, IntegrationConfig, LicenseStatus } from '@shared/types'
+import {
+  getClinicSettings,
+  updateClinicSettings,
+  exportPatientsCsv,
+  importPatientsCsv,
+  getIntegrationConfig,
+  saveIntegrationConfig,
+  testIntegrationConnection,
+  getLicenseStatus,
+  activateLicense,
+  getLicenseMachineCode,
+} from '@/lib/ipc'
 import { useUIStore } from '@/store/uiStore'
 import { useTranslation } from '@/lib/i18n'
 import { usePatientStore } from '@/store/patientStore'
 
-type Tab = 'clinic' | 'appearance' | 'data'
+type Tab = 'clinic' | 'appearance' | 'data' | 'integrations' | 'license'
+
+const EMPTY_INTEGRATION: IntegrationConfig = {
+  apiUrl: '',
+  clinicName: '',
+  username: '',
+  password: '',
+}
 
 const EMPTY_SETTINGS: ClinicSettings = {
   clinicName: '',
@@ -27,6 +45,22 @@ export function Settings(): JSX.Element {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
+  // Integrations tab state
+  const [intConfig, setIntConfig] = useState<IntegrationConfig>(EMPTY_INTEGRATION)
+  const [intLoading, setIntLoading] = useState(false)
+  const [intSaving, setIntSaving] = useState(false)
+  const [intTesting, setIntTesting] = useState(false)
+  const [intTestResult, setIntTestResult] = useState<{ success: boolean; error?: string } | null>(null)
+  const [intSaved, setIntSaved] = useState(false)
+
+  // License tab state
+  const [licenseStatus, setLicenseStatus] = useState<LicenseStatus | null>(null)
+  const [machineCode, setMachineCode] = useState<string | null>(null)
+  const [licenseKey, setLicenseKey] = useState('')
+  const [licenseActivating, setLicenseActivating] = useState(false)
+  const [licenseActivateMsg, setLicenseActivateMsg] = useState<{ success: boolean; text: string } | null>(null)
+  const [machineCopied, setMachineCopied] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isExporting, setIsExporting] = useState(false)
@@ -50,6 +84,36 @@ export function Settings(): JSX.Element {
     }
     void load()
   }, [])
+
+  useEffect(() => {
+    if (activeTab !== 'license') return
+    async function loadLicense(): Promise<void> {
+      try {
+        const [status, mc] = await Promise.all([getLicenseStatus(), getLicenseMachineCode()])
+        setLicenseStatus(status)
+        setMachineCode(mc.machineCode)
+      } catch {
+        // Ignore
+      }
+    }
+    void loadLicense()
+  }, [activeTab])
+
+  useEffect(() => {
+    if (activeTab !== 'integrations') return
+    async function loadIntegration(): Promise<void> {
+      setIntLoading(true)
+      try {
+        const config = await getIntegrationConfig()
+        setIntConfig(config)
+      } catch {
+        // Silently ignore — config may not exist yet
+      } finally {
+        setIntLoading(false)
+      }
+    }
+    void loadIntegration()
+  }, [activeTab])
 
   function handleChange(
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -119,6 +183,60 @@ export function Settings(): JSX.Element {
     }
   }
 
+  function handleIntChange(e: ChangeEvent<HTMLInputElement>): void {
+    const { name, value } = e.target
+    setIntConfig((prev) => ({ ...prev, [name]: value }))
+    setIntTestResult(null)
+  }
+
+  async function handleTestConnection(): Promise<void> {
+    setIntTesting(true)
+    setIntTestResult(null)
+    try {
+      const result = await testIntegrationConnection()
+      setIntTestResult(result)
+    } catch (err) {
+      setIntTestResult({ success: false, error: err instanceof Error ? err.message : 'Connection failed' })
+    } finally {
+      setIntTesting(false)
+    }
+  }
+
+  async function handleActivateLicense(): Promise<void> {
+    if (!licenseKey.trim()) return
+    setLicenseActivating(true)
+    setLicenseActivateMsg(null)
+    try {
+      const result = await activateLicense(licenseKey.trim())
+      if (result.success) {
+        setLicenseActivateMsg({ success: true, text: t.licenseActivateSuccess(result.licensee ?? '') })
+        setLicenseKey('')
+        const status = await getLicenseStatus()
+        setLicenseStatus(status)
+      } else {
+        setLicenseActivateMsg({ success: false, text: result.error ?? 'Activation failed' })
+      }
+    } catch (err) {
+      setLicenseActivateMsg({ success: false, text: err instanceof Error ? err.message : 'Activation failed' })
+    } finally {
+      setLicenseActivating(false)
+    }
+  }
+
+  async function handleSaveIntegration(): Promise<void> {
+    setIntSaving(true)
+    setIntSaved(false)
+    try {
+      await saveIntegrationConfig(intConfig)
+      setIntSaved(true)
+      setTimeout(() => setIntSaved(false), 2000)
+    } catch {
+      // Ignore — no global error surface for integrations form
+    } finally {
+      setIntSaving(false)
+    }
+  }
+
   const inputClass =
     'w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
 
@@ -157,6 +275,20 @@ export function Settings(): JSX.Element {
             className={tabClass('data')}
           >
             Data
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('integrations')}
+            className={tabClass('integrations')}
+          >
+            {t.integrations}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('license')}
+            className={tabClass('license')}
+          >
+            {t.licenseTab}
           </button>
         </div>
 
@@ -377,6 +509,265 @@ export function Settings(): JSX.Element {
                 full_name, date_of_birth, sex, phone, email, address, insurance_provider, insurance_policy, medical_alerts, notes, tooth_fdi, surface, condition_type, treatment_status, date_performed, performed_by, treatment_notes, price
               </p>
             </div>
+          </div>
+        )}
+
+        {/* Integrations tab */}
+        {activeTab === 'integrations' && (
+          <div className="space-y-6 max-w-lg">
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                External Appointment Service
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-5">
+                {t.integrationDesc}
+              </p>
+
+              {intLoading ? (
+                <p className="text-sm text-gray-400 dark:text-gray-500">{t.loading}</p>
+              ) : (
+                <div className="space-y-4">
+                  {/* API URL */}
+                  <div>
+                    <label
+                      htmlFor="int-apiUrl"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >
+                      {t.apiUrl} <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="int-apiUrl"
+                      name="apiUrl"
+                      type="text"
+                      value={intConfig.apiUrl}
+                      onChange={handleIntChange}
+                      className={inputClass}
+                      placeholder="https://booking.example.com/api"
+                    />
+                  </div>
+
+                  {/* Clinic Name */}
+                  <div>
+                    <label
+                      htmlFor="int-clinicName"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >
+                      {t.clinicNameIntegration} <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="int-clinicName"
+                      name="clinicName"
+                      type="text"
+                      value={intConfig.clinicName}
+                      onChange={handleIntChange}
+                      className={inputClass}
+                      placeholder="Smile Dental"
+                    />
+                  </div>
+
+                  {/* Username */}
+                  <div>
+                    <label
+                      htmlFor="int-username"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >
+                      {t.usernameField} <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="int-username"
+                      name="username"
+                      type="text"
+                      value={intConfig.username}
+                      onChange={handleIntChange}
+                      className={inputClass}
+                      placeholder="admin"
+                    />
+                  </div>
+
+                  {/* Password */}
+                  <div>
+                    <label
+                      htmlFor="int-password"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >
+                      {t.passwordField}
+                    </label>
+                    <input
+                      id="int-password"
+                      name="password"
+                      type="password"
+                      value={intConfig.password}
+                      onChange={handleIntChange}
+                      className={inputClass}
+                      placeholder="••••••••"
+                    />
+                  </div>
+
+                  {/* Test Connection */}
+                  <div className="flex items-center gap-3 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => { void handleTestConnection() }}
+                      disabled={intTesting}
+                      className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                    >
+                      {intTesting ? (
+                        <span className="flex items-center gap-2">
+                          <svg
+                            className="w-3.5 h-3.5 animate-spin"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            aria-hidden="true"
+                          >
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                          </svg>
+                          {t.loading}
+                        </span>
+                      ) : (
+                        t.testConnection
+                      )}
+                    </button>
+                    {intTestResult !== null && (
+                      intTestResult.success ? (
+                        <span className="text-sm text-green-600 dark:text-green-400 font-medium">
+                          ✓ {t.connectionSuccess}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-red-600 dark:text-red-400">
+                          ✗ {intTestResult.error ?? 'Connection failed'}
+                        </span>
+                      )
+                    )}
+                  </div>
+
+                  {/* Save */}
+                  <div className="pt-1 flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => { void handleSaveIntegration() }}
+                      disabled={intSaving}
+                      className="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                    >
+                      {intSaving ? t.saving : t.saveConfiguration}
+                    </button>
+                    {intSaved && (
+                      <span className="text-sm text-green-600 dark:text-green-400 font-medium">
+                        {t.configSaved}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* License tab */}
+        {activeTab === 'license' && (
+          <div className="space-y-6 max-w-lg">
+            {/* Status card */}
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                {t.licenseStatus}
+              </h3>
+              {licenseStatus === null ? (
+                <p className="text-sm text-gray-400 dark:text-gray-500">{t.loading}</p>
+              ) : licenseStatus.activated ? (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+                    <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                      {t.licenseActivated}
+                    </span>
+                  </div>
+                  {licenseStatus.licensee && (
+                    <p className="text-sm text-gray-700 dark:text-gray-300 pl-4">
+                      {t.licenseActivatedFor(licenseStatus.licensee)}
+                    </p>
+                  )}
+                  <p className="text-sm text-gray-500 dark:text-gray-400 pl-4">
+                    {licenseStatus.expiresAt
+                      ? t.licenseExpires(licenseStatus.expiresAt.slice(0, 10))
+                      : t.licenseNeverExpires}
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 rounded-full bg-red-500" />
+                  <span className="text-sm font-medium text-red-600 dark:text-red-400">
+                    {t.licenseNotActivated}
+                  </span>
+                  {licenseStatus.error && (
+                    <span className="text-xs text-gray-500 dark:text-gray-400">— {licenseStatus.error}</span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Machine code card */}
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                {t.machineCode}
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                {t.machineCodeDesc}
+              </p>
+              {machineCode ? (
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-xs font-mono bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-800 dark:text-gray-200 break-all">
+                    {machineCode}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(machineCode).then(() => {
+                        setMachineCopied(true)
+                        setTimeout(() => setMachineCopied(false), 2000)
+                      })
+                    }}
+                    className="px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors shrink-0"
+                  >
+                    {machineCopied ? '✓ Copied' : 'Copy'}
+                  </button>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400 dark:text-gray-500">{t.loading}</p>
+              )}
+            </div>
+
+            {/* Activation card */}
+            {!licenseStatus?.activated && (
+              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                  {t.licenseKey}
+                </h3>
+                <div className="space-y-3">
+                  <textarea
+                    value={licenseKey}
+                    onChange={(e) => setLicenseKey(e.target.value)}
+                    rows={3}
+                    placeholder={t.licenseKeyPlaceholder}
+                    className={`${inputClass} resize-none font-mono text-xs`}
+                  />
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => { void handleActivateLicense() }}
+                      disabled={licenseActivating || !licenseKey.trim()}
+                      className="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                    >
+                      {licenseActivating ? t.activating : t.activateLicense}
+                    </button>
+                    {licenseActivateMsg && (
+                      <span className={`text-sm font-medium ${licenseActivateMsg.success ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {licenseActivateMsg.success ? '✓' : '✗'} {licenseActivateMsg.text}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

@@ -14,8 +14,11 @@ import type {
   UpdateStatus,
   LicenseStatus,
   ActivateResult,
+  LicenseMachineCode,
   CsvImportResult,
   RevenueStats,
+  IntegrationConfig,
+  SyncResult,
 } from '@shared/types'
 
 // Patient operations
@@ -92,6 +95,9 @@ export const getLicenseStatus = (): Promise<LicenseStatus> =>
 export const activateLicense = (key: string): Promise<ActivateResult> =>
   window.electron.activateLicense(key)
 
+export const getLicenseMachineCode = (): Promise<LicenseMachineCode> =>
+  window.electron.getLicenseMachineCode()
+
 // Onboarding
 export const getOnboardingStatus = (): Promise<boolean> =>
   window.electron.getOnboardingStatus()
@@ -119,3 +125,17 @@ export const setToothNote = (
   toothFdi: number,
   notes: string
 ): Promise<string> => window.electron.setToothNote(patientId, toothFdi, notes)
+
+// Integration
+export const getIntegrationConfig = (): Promise<IntegrationConfig> =>
+  window.electron.getIntegrationConfig()
+
+export const saveIntegrationConfig = (
+  config: IntegrationConfig
+): Promise<void> => window.electron.saveIntegrationConfig(config)
+
+export const testIntegrationConnection = (): Promise<{ success: boolean; error?: string }> =>
+  window.electron.testIntegrationConnection()
+
+export const syncExternalAppointments = (): Promise<SyncResult> =>
+  window.electron.syncExternalAppointments()

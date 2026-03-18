@@ -36,6 +36,7 @@ const api = {
   // License
   getLicenseStatus: () => electron.ipcRenderer.invoke("license:getStatus"),
   activateLicense: (key) => electron.ipcRenderer.invoke("license:activate", key),
+  getLicenseMachineCode: () => electron.ipcRenderer.invoke("license:getMachineCode"),
   // Onboarding
   getOnboardingStatus: () => electron.ipcRenderer.invoke("onboarding:getStatus"),
   completeOnboarding: () => electron.ipcRenderer.invoke("onboarding:complete"),
@@ -43,6 +44,11 @@ const api = {
   exportPatientsCsv: () => electron.ipcRenderer.invoke("patients:exportCsv"),
   importPatientsCsv: (csvContent) => electron.ipcRenderer.invoke("patients:importCsv", csvContent),
   // Revenue
-  getRevenueStats: () => electron.ipcRenderer.invoke("revenue:getStats")
+  getRevenueStats: () => electron.ipcRenderer.invoke("revenue:getStats"),
+  // Integration
+  getIntegrationConfig: () => electron.ipcRenderer.invoke("integration:getConfig"),
+  saveIntegrationConfig: (config) => electron.ipcRenderer.invoke("integration:saveConfig", config),
+  testIntegrationConnection: () => electron.ipcRenderer.invoke("integration:testConnection"),
+  syncExternalAppointments: () => electron.ipcRenderer.invoke("integration:sync")
 };
 electron.contextBridge.exposeInMainWorld("electron", api);

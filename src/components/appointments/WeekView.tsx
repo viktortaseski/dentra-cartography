@@ -97,7 +97,10 @@ export function WeekView({
                 <AppointmentBlock
                   key={appt.id}
                   appointment={appt}
-                  patientName={patientMap.get(appt.patientId) ?? 'Unknown'}
+                  patientName={
+  (appt.patientId != null ? patientMap.get(appt.patientId) : undefined)
+  ?? (appt.patientName ? `[Online] ${appt.patientName}` : 'Unknown')
+}
                   onClick={(a) => onAppointmentClick(a)}
                 />
               ))}

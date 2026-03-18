@@ -129,6 +129,10 @@ export function AppointmentDetailCard({
                 </p>
               )}
             </div>
+          ) : appointment.patientName ? (
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              [Online] {appointment.patientName}
+            </p>
           ) : (
             <p className="text-sm text-gray-400 dark:text-gray-500">Patient not found</p>
           )}

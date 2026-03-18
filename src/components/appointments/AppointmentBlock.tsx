@@ -47,6 +47,11 @@ export function AppointmentBlock({
           <div className={`text-[11px] text-gray-500 dark:text-gray-400 truncate mt-0.5 ${STATUS_TEXT[appointment.status]}`}>
             {appointment.title}
           </div>
+          {appointment.source === 'external' && (
+            <span className="inline-block mt-1 text-[9px] px-1 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 font-bold">
+              EXT
+            </span>
+          )}
         </div>
       </div>
     </button>

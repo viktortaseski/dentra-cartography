@@ -14,7 +14,7 @@ files:
 # Set owner + repo to your GitHub repository before publishing.
 publish:
   provider: github
-  owner: YOUR_GITHUB_USERNAME
+  owner: viktortaseski
   repo: dental-cartography
   releaseType: release
 

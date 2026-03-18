@@ -4,29 +4,33 @@ import type { Appointment, CreateAppointmentRequest, UpdateAppointmentRequest } 
 // DB row shape (snake_case columns from SQLite)
 interface AppointmentRow {
   id: number
-  patient_id: number
+  patient_id: number | null
+  patient_name: string | null
   title: string
   date: string
   start_time: string
   end_time: string
   status: string
   notes: string | null
+  source: string | null
   created_at: string
   updated_at: string
 }
 
 function rowToAppointment(row: AppointmentRow): Appointment {
   return {
-    id:        row.id,
-    patientId: row.patient_id,
-    title:     row.title,
-    date:      row.date,
-    startTime: row.start_time,
-    endTime:   row.end_time,
-    status:    row.status as Appointment['status'],
-    notes:     row.notes,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at
+    id:          row.id,
+    patientId:   row.patient_id,
+    patientName: row.patient_name,
+    title:       row.title,
+    date:        row.date,
+    startTime:   row.start_time,
+    endTime:     row.end_time,
+    status:      row.status as Appointment['status'],
+    notes:       row.notes,
+    source:      (row.source ?? 'local') as Appointment['source'],
+    createdAt:   row.created_at,
+    updatedAt:   row.updated_at
   }
 }
 
@@ -34,12 +38,14 @@ const SELECT_APPOINTMENT = `
   SELECT
     id,
     patient_id,
+    patient_name,
     title,
     date,
     start_time,
     end_time,
     status,
     notes,
+    source,
     created_at,
     updated_at
   FROM appointments
