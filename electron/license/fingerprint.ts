@@ -2,17 +2,6 @@ import { execFileSync } from 'child_process'
 import crypto from 'crypto'
 import os from 'os'
 
-function getMacAddresses(): string {
-  const interfaces = os.networkInterfaces()
-  const macs = Object.values(interfaces)
-    .flat()
-    .map((entry) => entry?.mac?.toLowerCase() ?? '')
-    .filter((mac) => mac !== '' && mac !== '00:00:00:00:00:00')
-    .sort()
-
-  return Array.from(new Set(macs)).join('|')
-}
-
 function getPlatformMachineId(): string | null {
   try {
     if (process.platform === 'win32') {
@@ -42,7 +31,6 @@ export function getMachineFingerprint(): string {
     getPlatformMachineId() ?? os.hostname().toLowerCase(),
     os.platform(),
     os.arch(),
-    getMacAddresses(),
   ].join('|')
 
   return crypto.createHash('sha256').update(raw).digest('hex')
