@@ -109,6 +109,9 @@ export const completeOnboarding = (): Promise<void> =>
 export const exportPatientsCsv = (): Promise<string> =>
   window.electron.exportPatientsCsv()
 
+export const exportPatientsCsvSelected = (ids: number[]): Promise<string> =>
+  window.electron.exportPatientsCsvSelected(ids)
+
 export const importPatientsCsv = (csvContent: string): Promise<CsvImportResult> =>
   window.electron.importPatientsCsv(csvContent)
 

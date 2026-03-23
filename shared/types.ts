@@ -234,6 +234,7 @@ export interface ElectronAPI {
 
   // CSV
   exportPatientsCsv: () => Promise<string>
+  exportPatientsCsvSelected: (ids: number[]) => Promise<string>
   importPatientsCsv: (csv: string) => Promise<CsvImportResult>
 
   // Revenue

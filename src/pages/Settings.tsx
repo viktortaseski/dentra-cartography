@@ -4,6 +4,7 @@ import {
   getClinicSettings,
   updateClinicSettings,
   exportPatientsCsv,
+  exportPatientsCsvSelected,
   importPatientsCsv,
   getIntegrationConfig,
   saveIntegrationConfig,
@@ -37,7 +38,7 @@ const EMPTY_SETTINGS: ClinicSettings = {
 export function Settings(): JSX.Element {
   const t = useTranslation()
   const { theme, language, setTheme, setLanguage, fontSize, setFontSize } = useUIStore()
-  const loadPatients = usePatientStore((s) => s.loadPatients)
+  const { patients, loadPatients } = usePatientStore()
 
   const [activeTab, setActiveTab] = useState<Tab>('clinic')
   const [fields, setFields] = useState<ClinicSettings>(EMPTY_SETTINGS)
@@ -65,6 +66,8 @@ export function Settings(): JSX.Element {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isExporting, setIsExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
+  const [selectedExportIds, setSelectedExportIds] = useState<Set<number>>(new Set())
+  const [exportSearch, setExportSearch] = useState('')
   const [isImporting, setIsImporting] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
   const [importResult, setImportResult] = useState<CsvImportResult | null>(null)
@@ -84,6 +87,16 @@ export function Settings(): JSX.Element {
     }
     void load()
   }, [])
+
+  // Load patients when entering data tab; initialise all as selected
+  useEffect(() => {
+    if (activeTab !== 'data') return
+    void loadPatients()
+  }, [activeTab, loadPatients])
+
+  useEffect(() => {
+    setSelectedExportIds(new Set(patients.map((p) => p.id)))
+  }, [patients])
 
   useEffect(() => {
     if (activeTab !== 'license') return
@@ -147,7 +160,10 @@ export function Settings(): JSX.Element {
     setIsExporting(true)
     setExportError(null)
     try {
-      const csv = await exportPatientsCsv()
+      const allSelected = selectedExportIds.size === patients.length
+      const csv = allSelected
+        ? await exportPatientsCsv()
+        : await exportPatientsCsvSelected(Array.from(selectedExportIds))
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
       const url = URL.createObjectURL(blob)
       const dateStr = new Date().toISOString().split('T')[0]
@@ -452,15 +468,76 @@ export function Settings(): JSX.Element {
             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Export Patients</h3>
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                Download all patients and their treatment history as a CSV file.
+                Select which patients to include in the CSV export.
               </p>
+
+              {/* Search */}
+              <input
+                type="text"
+                value={exportSearch}
+                onChange={(e) => setExportSearch(e.target.value)}
+                placeholder="Search patients…"
+                className="w-full mb-3 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+
+              {/* Select all / none controls */}
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {selectedExportIds.size} of {patients.length} selected
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedExportIds(new Set(patients.map((p) => p.id)))}
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline focus:outline-none"
+                >
+                  Select all
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedExportIds(new Set())}
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline focus:outline-none"
+                >
+                  Deselect all
+                </button>
+              </div>
+
+              {/* Patient checklist */}
+              <div className="border border-gray-200 dark:border-gray-600 rounded-lg overflow-y-auto max-h-48 mb-4">
+                {patients.length === 0 ? (
+                  <p className="text-xs text-gray-400 dark:text-gray-500 px-3 py-4 text-center">No patients found</p>
+                ) : (
+                  patients
+                  .filter((p) => p.fullName.toLowerCase().includes(exportSearch.toLowerCase()))
+                  .map((p) => (
+                    <label
+                      key={p.id}
+                      className="flex items-center gap-2.5 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedExportIds.has(p.id)}
+                        onChange={(e) => {
+                          const next = new Set(selectedExportIds)
+                          if (e.target.checked) next.add(p.id)
+                          else next.delete(p.id)
+                          setSelectedExportIds(next)
+                        }}
+                        className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-800 dark:text-gray-200 truncate">{p.fullName}</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto shrink-0">{p.dateOfBirth}</span>
+                    </label>
+                  ))
+                )}
+              </div>
+
               <button
                 type="button"
                 onClick={handleExport}
-                disabled={isExporting}
+                disabled={isExporting || selectedExportIds.size === 0}
                 className="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
-                {isExporting ? 'Exporting\u2026' : 'Export CSV'}
+                {isExporting ? 'Exporting\u2026' : `Export CSV (${selectedExportIds.size})`}
               </button>
               {exportError && <p className="text-xs text-red-600 mt-2">{exportError}</p>}
             </div>

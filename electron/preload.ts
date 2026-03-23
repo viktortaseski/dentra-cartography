@@ -56,6 +56,7 @@ const api: ElectronAPI = {
 
   // CSV
   exportPatientsCsv: () => ipcRenderer.invoke('patients:exportCsv'),
+  exportPatientsCsvSelected: (ids: number[]) => ipcRenderer.invoke('patients:exportCsvSelected', ids),
   importPatientsCsv: (csvContent: string) => ipcRenderer.invoke('patients:importCsv', csvContent),
 
   // Revenue
