@@ -1,7 +1,4 @@
 import type { Patient } from '@shared/types'
-import { useChartStore } from '@/store/chartStore'
-import { useTreatmentStore } from '@/store/treatmentStore'
-import { ReportButton } from '@/components/reports/ReportButton'
 import { useTranslation } from '@/lib/i18n'
 
 interface TopBarProps {
@@ -22,8 +19,6 @@ function formatDob(dateOfBirth: string): string {
 
 export function TopBar({ patient, viewTitle }: TopBarProps): JSX.Element {
   const t = useTranslation()
-  const chartEntries = useChartStore((s) => s.chartEntries)
-  const treatments = useTreatmentStore((s) => s.treatments)
   const isMac = navigator.userAgent.includes('Mac')
 
   return (
@@ -81,20 +76,6 @@ export function TopBar({ patient, viewTitle }: TopBarProps): JSX.Element {
           </>
         )}
       </div>
-
-      {/* Right: PDF export (only when a patient is active and no alternate view) */}
-      {patient && !viewTitle && (
-        <div
-          className="flex items-center gap-2 flex-shrink-0"
-          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-        >
-          <ReportButton
-            patient={patient}
-            chartEntries={chartEntries}
-            treatments={treatments}
-          />
-        </div>
-      )}
     </header>
   )
 }

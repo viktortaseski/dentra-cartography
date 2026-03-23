@@ -30,7 +30,6 @@ export function Dashboard(): JSX.Element {
   const selectedToothFdi = useChartStore((s) => s.selectedToothFdi)
   const chartEntries = useChartStore((s) => s.chartEntries)
   const treatments = useTreatmentStore((s) => s.treatments)
-
   const [modal, setModal] = useState<ModalState>({ kind: 'closed' })
   const [activeView, setActiveView] = useState<ActiveView>('chart')
 

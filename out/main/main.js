@@ -874,11 +874,6 @@ function registerAppointmentHandlers() {
     }
   });
 }
-function getMacAddresses() {
-  const interfaces = os.networkInterfaces();
-  const macs = Object.values(interfaces).flat().map((entry) => entry?.mac?.toLowerCase() ?? "").filter((mac) => mac !== "" && mac !== "00:00:00:00:00:00").sort();
-  return Array.from(new Set(macs)).join("|");
-}
 function getPlatformMachineId() {
   try {
     if (process.platform === "win32") {
@@ -904,8 +899,7 @@ function getMachineFingerprint() {
   const raw = [
     getPlatformMachineId() ?? os.hostname().toLowerCase(),
     os.platform(),
-    os.arch(),
-    getMacAddresses()
+    os.arch()
   ].join("|");
   return crypto.createHash("sha256").update(raw).digest("hex");
 }
