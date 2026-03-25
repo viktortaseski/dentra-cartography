@@ -8,6 +8,8 @@ on:
 jobs:
   build-windows:
     runs-on: windows-latest
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
     steps:
       - name: Checkout code
@@ -25,7 +27,9 @@ jobs:
         run: npm run build
 
       - name: Package Windows installer
-        run: npx electron-builder --win --x64 --publish never
+        run: npx electron-builder --win --x64 -c.publish=null
+        env:
+          GH_TOKEN: ""
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
