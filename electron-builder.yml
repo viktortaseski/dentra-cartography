@@ -1,6 +1,7 @@
 appId: com.dental.cartography
 productName: Dental Cartography
 copyright: Copyright © 2026
+publish: null
 
 directories:
   buildResources: build
