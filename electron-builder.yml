@@ -9,15 +9,6 @@ directories:
 files:
   - out/**/*
 
-# ── Publish (GitHub Releases) ─────────────────────────────────────────────────
-# Requires GH_TOKEN env var with repo write access.
-# Set owner + repo to your GitHub repository before publishing.
-publish:
-  provider: github
-  owner: viktortaseski
-  repo: dental-cartography
-  releaseType: release
-
 # ── macOS ─────────────────────────────────────────────────────────────────────
 mac:
   category: public.app-category.medical
