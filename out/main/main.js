@@ -1166,6 +1166,55 @@ function registerCsvHandlers() {
     }
     return rows.join("\n");
   });
+  electron.ipcMain.handle("patients:exportCsvSelected", (_event, ids) => {
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return "full_name,date_of_birth,sex,phone,email,address,insurance_provider,insurance_policy,medical_alerts,notes,tooth_fdi,surface,condition_type,treatment_status,date_performed,performed_by,treatment_notes,price";
+    }
+    const validIds = ids.filter((id) => typeof id === "number" && Number.isInteger(id));
+    if (validIds.length === 0) {
+      return "full_name,date_of_birth,sex,phone,email,address,insurance_provider,insurance_policy,medical_alerts,notes,tooth_fdi,surface,condition_type,treatment_status,date_performed,performed_by,treatment_notes,price";
+    }
+    const db2 = getDb();
+    const HEADER = "full_name,date_of_birth,sex,phone,email,address,insurance_provider,insurance_policy,medical_alerts,notes,tooth_fdi,surface,condition_type,treatment_status,date_performed,performed_by,treatment_notes,price";
+    const placeholders = validIds.map(() => "?").join(",");
+    const patients = db2.prepare(`SELECT * FROM patients WHERE archived_at IS NULL AND id IN (${placeholders}) ORDER BY full_name`).all(...validIds);
+    const rows = [HEADER];
+    for (const p of patients) {
+      const patientFields = [
+        p.full_name,
+        p.date_of_birth,
+        p.sex,
+        p.phone,
+        p.email,
+        p.address,
+        p.insurance_provider,
+        p.insurance_policy,
+        p.medical_alerts,
+        p.notes
+      ];
+      const treatments = db2.prepare("SELECT * FROM treatments WHERE patient_id = ? ORDER BY date_performed").all(p.id);
+      if (treatments.length === 0) {
+        rows.push(toCsvRow([...patientFields, "", "", "", "", "", "", "", ""]));
+      } else {
+        for (const t of treatments) {
+          rows.push(
+            toCsvRow([
+              ...patientFields,
+              t.tooth_fdi,
+              t.surface,
+              t.condition_type,
+              t.status,
+              t.date_performed,
+              t.performed_by,
+              t.notes,
+              t.price
+            ])
+          );
+        }
+      }
+    }
+    return rows.join("\n");
+  });
   electron.ipcMain.handle("patients:importCsv", (_event, csvContent) => {
     if (typeof csvContent !== "string") {
       return {

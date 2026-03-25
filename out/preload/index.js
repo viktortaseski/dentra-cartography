@@ -42,6 +42,7 @@ const api = {
   completeOnboarding: () => electron.ipcRenderer.invoke("onboarding:complete"),
   // CSV
   exportPatientsCsv: () => electron.ipcRenderer.invoke("patients:exportCsv"),
+  exportPatientsCsvSelected: (ids) => electron.ipcRenderer.invoke("patients:exportCsvSelected", ids),
   importPatientsCsv: (csvContent) => electron.ipcRenderer.invoke("patients:importCsv", csvContent),
   // Revenue
   getRevenueStats: () => electron.ipcRenderer.invoke("revenue:getStats"),
